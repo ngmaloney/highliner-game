@@ -33,9 +33,9 @@ var (
 	colorCyan          = lipgloss.Color("6")
 	colorBrightCyan    = lipgloss.Color("14")
 	colorAmber         = lipgloss.Color("3")  // dark yellow / amber
-	colorBrightAmber   = lipgloss.Color("11") // bright yellow
+	colorBrightAmber   = lipgloss.Color("#FFB300") // amber
 	colorRed           = lipgloss.Color("1")
-	colorBrightRed     = lipgloss.Color("9")
+	colorBrightRed     = lipgloss.Color("#FF3333")
 	colorWhite         = lipgloss.Color("7")
 	colorBrightWhite   = lipgloss.Color("15")
 	colorMagenta       = lipgloss.Color("5")
@@ -75,13 +75,13 @@ var (
 			Foreground(colorBrightWhite)
 
 	styleGood = lipgloss.NewStyle().
-			Foreground(colorBrightGreen)
+			Foreground(lipgloss.Color("#00FF00"))
 
 	styleWarn = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("214")).Bold(true) // bright orange
+			Foreground(lipgloss.Color("#FF8C00")).Bold(true) // bright orange
 
 	styleDanger = lipgloss.NewStyle().
-			Foreground(colorBrightRed)
+			Foreground(lipgloss.Color("#FF3333"))
 
 	styleLog = lipgloss.NewStyle().
 			Foreground(colorBrightGreen)
@@ -414,7 +414,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 11 { // 12 items: 4 supplies + 3 repairs + 5 equipment (0-11)
+			if m.marketCursor < 12 { // 13 items: 4 supplies + 3 repairs + 6 equipment (0-12)
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -452,13 +452,15 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.syncViewport()
 			} else {
 				m.addLog("")
-				m.addLogStyled(styleLogInfo, "⚓ Staying in port. Heading to the co-op.")
+				m.addLogStyled(styleLogInfo, "⚓ Staying in port.")
+				m.chargeDockFee()
 				m.phase = PhaseSell
 				m.doSell()
 			}
 		case "s":
 			m.addLog("")
-			m.addLogStyled(styleLogInfo, "Skipping haul today. Heading to co-op.")
+			m.addLogStyled(styleLogInfo, "Staying in port today.")
+			m.chargeDockFee()
 			m.phase = PhaseSell
 			m.doSell()
 		}
@@ -628,6 +630,7 @@ func (m *model) doNextDay() {
 		m.addLog("")
 		m.addLogStyled(styleLogDanger, "  You wake up face-down on the bait table.")
 		m.addLogStyled(styleLogDanger, "  Can't make it out today. Day wasted.")
+		m.chargeDockFee()
 		m.addLog("")
 		m.addLogStyled(styleKey, "  [ENTER/S] Skip to co-op   [W] Wharf   [M] Maintenance")
 	} else {
@@ -804,6 +807,9 @@ func (m *model) doHaul() {
 	m.gs.Bait = max(0, m.gs.Bait-result.BaitUsed)
 	m.gs.Freezer += result.CatchLbs
 	m.gs.TotalCatch += result.CatchLbs
+	if result.TrapsLost > 0 {
+		m.gs.Traps = max(0, m.gs.Traps-result.TrapsLost)
+	}
 
 	// Roll for a random event
 	m.activeEvent = RollRandomEvent(m.gs, m.weather)
@@ -835,6 +841,14 @@ func (m *model) doHaul() {
 		m.queueLogStyled(styleLogDanger, "1045 — ⚠ Eastern 22 taking a beating in these swells.")
 		hullDmg := result.HullDmg * 2.5
 		m.gs.Engine = math.Max(0, m.gs.Engine-hullDmg)
+	}
+	if result.TrapsLost > 0 {
+		trapCost := float64(result.TrapsLost) * BoatModels[m.gs.BoatName].TrapCost
+		if result.TrapsLost == 1 {
+			m.queueLogStyled(styleLogWarn, fmt.Sprintf("1050 — Lost a trap out there. Gone. ($%.0f replacement)", trapCost))
+		} else {
+			m.queueLogStyled(styleLogDanger, fmt.Sprintf("1050 — Lost %d traps. Lines cut or swept. ($%.0f to replace)", result.TrapsLost, trapCost))
+		}
 	}
 
 	// If event fires before the midday check, queue its description line
@@ -1021,6 +1035,12 @@ func (m *model) resolveEvent(key string) {
 	m.phase = PhaseHauling
 	m.addLog("")
 	m.syncViewport()
+}
+
+func (m *model) chargeDockFee() {
+	fee := 20.0
+	m.gs.Money -= fee
+	m.addLogStyled(styleLogExpense, fmt.Sprintf("  ⚓ Slip/mooring fee: -$%.0f", fee))
 }
 
 func (m *model) doSell() {
@@ -1226,6 +1246,13 @@ func (m *model) doBuy() {
 			m.gs.HasDepthSound = true
 			m.confirmBuy = "Depth sounder installed. You can read the bottom now."
 		}},
+		{"Exhaust Heat Exchanger", 3000, func() {
+			if m.gs.HasExhaustHX { m.confirmBuy = "Already installed."; return }
+			if m.gs.Money < 3000 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(3000), moneyStr(3000-m.gs.Money)); return }
+			m.gs.Money -= 3000
+			m.gs.HasExhaustHX = true
+			m.confirmBuy = "Heat exchanger installed. Engine'll run cooler and last longer."
+		}},
 	}
 
 	if m.marketCursor >= len(items) {
@@ -1412,11 +1439,19 @@ func (m model) viewMaintenanceContent() string {
 	for _, c := range components {
 		bar := healthBar(c.health, 30)
 		status := healthStatus(c.health)
+		var hs lipgloss.Style
+		if c.health >= 60 {
+			hs = styleGood
+		} else if c.health >= 30 {
+			hs = styleWarn
+		} else {
+			hs = styleDanger
+		}
 		b.WriteString(fmt.Sprintf("  %-14s %s %s  %s\n",
 			styleLabel.Render(c.name+":"),
 			bar,
-			styleValue.Render(fmt.Sprintf("%5.1f%%", c.health)),
-			styleDim(status)))
+			hs.Render(fmt.Sprintf("%5.1f%%", c.health)),
+			hs.Render(status)))
 		b.WriteString(fmt.Sprintf("  %-14s %s\n\n", "", styleDim(c.repair)))
 	}
 
@@ -1638,6 +1673,13 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasDepthSound { return "✓ full efficiency in deep zones" }
 			return "full efficiency in deep zones (D-G)"
 		}()},
+		{"Exhaust Heat Exchanger", func() string {
+			if m.gs.HasExhaustHX { return "owned" }
+			return "$3,000"
+		}(), func() string {
+			if m.gs.HasExhaustHX { return "✓ engine runs cooler, less wear" }
+			return "reduces engine wear per haul"
+		}()},
 	}
 
 	allItems := append(supplyItems, repairItems...)
@@ -1725,9 +1767,9 @@ func healthBar(h float64, width int) string {
 
 func healthStr(h float64) string {
 	s := fmt.Sprintf("%.0f%%", h)
-	if h >= 70 {
+	if h >= 60 {
 		return styleGood.Render(s)
-	} else if h >= 40 {
+	} else if h >= 30 {
 		return styleWarn.Render(s)
 	}
 	return styleDanger.Render(s)

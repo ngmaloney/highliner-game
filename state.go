@@ -21,6 +21,7 @@ type BoatModel struct {
 	BaitCap      int     // lbs of herring the boat can carry (fish totes on deck)
 	MaxSteamHrs  float64 // max round-trip steam hours (range limit); 0 = unlimited
 	Cost         int
+	TrapCost     float64 // replacement cost per trap ($)
 	BaseHaul     float64 // lbs per trap per haul (realistic Maine avg ~1.5-2.5 lbs/trap/day)
 }
 
@@ -29,24 +30,23 @@ var BoatModels = map[string]BoatModel{
 	// Fishes nearshore to mid-range; outer zones are a stretch
 	"Eastern 22": {
 		Name: "Eastern 22", Length: 22, MaxTraps: 40,
-		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 250, MaxSteamHrs: 6.5, Cost: 0, BaseHaul: 2.0,
+		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 250, MaxSteamHrs: 6.5, Cost: 0, TrapCost: 175, BaseHaul: 2.0,
 	},
-	// Calvin Beal 34: workhorse, twin diesel ~4.5 gal/hr, 120-gal tank
 	"Calvin Beal 34": {
 		Name: "Calvin Beal 34", Length: 34, MaxTraps: 300,
-		HullRisk: 1.2, FuelCap: 120, FuelBurnRate: 4.5, BaitCap: 500, Cost: 45000, BaseHaul: 2.2,
+		HullRisk: 1.2, FuelCap: 120, FuelBurnRate: 4.5, BaitCap: 500, Cost: 45000, TrapCost: 165, BaseHaul: 2.2,
 	},
 	"Duffy 35": {
 		Name: "Duffy 35", Length: 35, MaxTraps: 400,
-		HullRisk: 1.1, FuelCap: 130, FuelBurnRate: 4.8, BaitCap: 600, Cost: 50000, BaseHaul: 2.3,
+		HullRisk: 1.1, FuelCap: 130, FuelBurnRate: 4.8, BaitCap: 600, Cost: 50000, TrapCost: 155, BaseHaul: 2.3,
 	},
 	"Young Bros 40": {
 		Name: "Young Bros 40", Length: 40, MaxTraps: 600,
-		HullRisk: 0.8, FuelCap: 200, FuelBurnRate: 9.0, BaitCap: 900, Cost: 120000, BaseHaul: 2.5,
+		HullRisk: 0.8, FuelCap: 200, FuelBurnRate: 9.0, BaitCap: 900, Cost: 120000, TrapCost: 150, BaseHaul: 2.5,
 	},
 	"Wesmac 46": {
 		Name: "Wesmac 46", Length: 46, MaxTraps: 800,
-		HullRisk: 0.5, FuelCap: 300, FuelBurnRate: 14.0, BaitCap: 1400, Cost: 280000, BaseHaul: 2.7,
+		HullRisk: 0.5, FuelCap: 300, FuelBurnRate: 14.0, BaitCap: 1400, Cost: 280000, TrapCost: 150, BaseHaul: 2.7,
 	},
 }
 
@@ -180,6 +180,7 @@ type GameState struct {
 	HasVHF        bool `json:"has_vhf"`         // weather forecast + distress events
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // slower hydraulic wear
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
+	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 }
 
 func newGame() *GameState {
@@ -251,6 +252,7 @@ type HaulResult struct {
 	ZincsDmg      float64
 	HydraulicsDmg float64
 	HullDmg       float64
+	TrapsLost     int
 }
 
 // RollDailyPrices generates co-op dock prices for the day
@@ -373,8 +375,11 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	}
 
 	// Component wear: diesel engines are durable; zincs corrode from seawater
-	// Engine: ~0.5-1% wear per day running hard
+	// Engine: ~0.5-1% wear per day; heat exchanger reduces wear by 60%
 	engineDmg := 0.5 + rand.Float64()*0.5
+	if gs.HasExhaustHX {
+		engineDmg *= 0.4
+	}
 	// Zincs: ~1-2% per day (saltwater exposure)
 	zincsDmg := 1.0 + rand.Float64()*1.0
 	// Hydraulics: ~0.4-0.9% per day
@@ -382,6 +387,24 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	// Hull damage from weather
 	hullDmg := weather.HullDamage * boat.HullRisk * (rand.Float64() * 0.5 + 0.5)
+
+	// Trap loss — each trap has a base chance of being lost per haul
+	trapLossRate := 0.02 // 2% per trap in normal conditions
+	if weather.Type == WeatherSCA {
+		trapLossRate = 0.05
+	}
+	// Deeper zones = rockier bottom, stronger current = more line loss
+	trapLossRate += zone.SteamHours * 0.003
+	// Upgraded hauler = better line handling
+	if gs.HasUpgHauler {
+		trapLossRate *= 0.6
+	}
+	trapsLost := 0
+	for i := 0; i < gs.Traps; i++ {
+		if rand.Float64() < trapLossRate {
+			trapsLost++
+		}
+	}
 
 	return HaulResult{
 		CatchLbs:      catchLbs,
@@ -393,6 +416,7 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		ZincsDmg:      zincsDmg,
 		HydraulicsDmg: hydDmg,
 		HullDmg:       hullDmg,
+		TrapsLost:     trapsLost,
 	}
 }
 
