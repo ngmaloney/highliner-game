@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"fmt"
 	"math"
 	"math/rand"
@@ -99,7 +100,7 @@ var (
 			Bold(true)
 
 	styleLogGreen = lipgloss.NewStyle().
-			Foreground(colorBrightGreen).
+			Foreground(lipgloss.Color("#00FF00")).
 			Bold(true)
 
 	styleLogRed = lipgloss.NewStyle().
@@ -163,6 +164,7 @@ type model struct {
 	currentZone  Zone
 	haul         *HaulResult
 	logLines     []string
+	pendingLines []string // queued lines for animated haul
 	viewport     viewport.Model
 	altVP        viewport.Model // for maintenance/dock/market screens
 	width        int
@@ -194,14 +196,26 @@ func newModel(gs *GameState) model {
 }
 
 func (m *model) initLog() {
-	m.addLog(m.logRule(styleTitle))
-	m.addLog(fmt.Sprintf("  HIGHLINER  —  Day %d", m.gs.Day))
-	m.addLog(m.logRule(styleTitle))
-	m.addLog("")
 	m.startMorning()
 }
 
+var styleDefault = lipgloss.NewStyle().Foreground(colorBrightWhite)
+
+// ─── Animated Haul ────────────────────────────────────────────────────────────
+
+type haulTickMsg struct{}
+
+func tickHaul() tea.Cmd {
+	return tea.Tick(280*time.Millisecond, func(t time.Time) tea.Msg {
+		return haulTickMsg{}
+	})
+}
+
 func (m *model) addLog(s string) {
+	// If string has no ANSI codes, force bright white so terminal default doesn't dim it
+	if !strings.Contains(s, "\x1b[") && s != "" {
+		s = styleDefault.Render(s)
+	}
 	m.logLines = append(m.logLines, s)
 }
 
@@ -232,6 +246,17 @@ func (m *model) addLogStyled(style lipgloss.Style, s string) {
 	m.logLines = append(m.logLines, style.Render(s))
 }
 
+func (m *model) queueLog(s string) {
+	if !strings.Contains(s, "\x1b[") && s != "" {
+		s = styleDefault.Render(s)
+	}
+	m.pendingLines = append(m.pendingLines, s)
+}
+
+func (m *model) queueLogStyled(style lipgloss.Style, s string) {
+	m.pendingLines = append(m.pendingLines, style.Render(s))
+}
+
 func (m model) Init() tea.Cmd {
 	return nil
 }
@@ -240,6 +265,19 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case haulTickMsg:
+		if len(m.pendingLines) > 0 {
+			m.addLog(m.pendingLines[0])
+			m.pendingLines = m.pendingLines[1:]
+			m.syncViewport()
+			if len(m.pendingLines) > 0 {
+				return m, tickHaul()
+			}
+			// Animation done — sell and go to evening
+			m.doSell()
+		}
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -401,7 +439,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.phase = PhaseHauling
 				m.screen = ScreenLog
 				m.doHaul()
-				return m, nil
+				return m, tickHaul()
 			}
 		}
 		switch key {
@@ -418,23 +456,23 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.phase = PhaseHauling
 				m.screen = ScreenLog
 				m.doHaul()
+				return m, tickHaul()
 			}
 		}
 
 	case PhaseHauling:
-		switch key {
-		case "enter", " ":
-			m.phase = PhaseSell
+		if key == " " && len(m.pendingLines) > 0 {
+			for _, line := range m.pendingLines {
+				m.addLog(line)
+			}
+			m.pendingLines = nil
+			m.syncViewport()
 			m.doSell()
+			return m, nil
 		}
 
 	case PhaseSell:
-		switch key {
-		case "enter", " ", "n":
-			m.phase = PhaseEvening
-			m.screen = ScreenLog
-			m.doEvening()
-		}
+		// auto-transitions to PhaseEvening — no input needed
 
 	case PhaseEvening:
 		switch key {
@@ -474,7 +512,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				winnings := scratchTicket()
 				m.addLog("")
 				if winnings == 0 {
-					m.addLog(styleDim("  Scratch ticket: loser. Threw it in the harbor."))
+					m.addLog("  Scratch ticket: loser. Threw it in the harbor.")
 				} else if winnings >= 500 {
 					m.gs.Money += float64(winnings)
 					m.addLogStyled(styleLogGreen, fmt.Sprintf("  🎰 JACKPOT! Scratch ticket pays $%d!", winnings))
@@ -524,7 +562,7 @@ func (m *model) doEvening() {
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [3] Scratch Ticket          $5    %s", styleDim("Probably a loser. Probably."))))
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [4] Early night             free  %s", styleDim("Up before dawn. Full day tomorrow."))))
 	m.addLog("")
-	m.addLog(styleDim(fmt.Sprintf("  Cash: %s", moneyStr(m.gs.Money))))
+	m.addLog(fmt.Sprintf("  Cash: %s", moneyStr(m.gs.Money)))
 	m.syncViewport()
 }
 
@@ -534,9 +572,7 @@ func (m *model) doNextDay() {
 	m.haul = nil
 	m.screen = ScreenLog
 	m.addLog("")
-	m.addLog(m.logRule(styleTitle))
-	m.addLogStyled(styleTitle, fmt.Sprintf("  DAY %d", m.gs.Day))
-	m.addLog(m.logRule(styleTitle))
+	m.addLog(m.logDivider(styleTitle, fmt.Sprintf("DAY %d", m.gs.Day)))
 	// Auto-fill tank overnight
 	boat := BoatModels[m.gs.BoatName]
 	needed := boat.FuelCap - m.gs.Fuel
@@ -544,7 +580,7 @@ func (m *model) doNextDay() {
 		cost := float64(needed) * m.gs.DieselPrice
 		m.gs.Money -= cost
 		m.gs.Fuel = boat.FuelCap
-		m.addLog(styleDim(fmt.Sprintf("  ⛽ Filled tank overnight: %d gal @ $%.2f/gal (-$%.2f)", needed, m.gs.DieselPrice, cost)))
+		m.addLogStyled(styleLogExpense, fmt.Sprintf("  ⛽ Filled tank overnight: %d gal @ $%.2f/gal (-$%.2f)", needed, m.gs.DieselPrice, cost))
 	}
 	if m.gs.Hungover {
 		m.gs.Hungover = false
@@ -580,10 +616,10 @@ func (m *model) startMorning() {
 	} else if w.Type == WeatherSCA || w.Type == WeatherGale {
 		weatherStyle = styleDanger
 	}
-	m.addLogStyled(styleLabel, fmt.Sprintf("Weather: %s", w.Type))
-	m.addLogStyled(weatherStyle, fmt.Sprintf("  %s", w.Description))
 	if !w.CanFish {
-		m.addLogStyled(styleLogDanger, "  ⚠ UNSAFE TO FISH — stay in port")
+		m.addLogStyled(weatherStyle, fmt.Sprintf("  ⚠ %s — %s. Stay in port.", w.Type, w.Description))
+	} else {
+		m.addLogStyled(weatherStyle, fmt.Sprintf("  %s — %s", w.Type, w.Description))
 	}
 	m.addLog("")
 
@@ -607,9 +643,9 @@ func (m *model) startMorning() {
 	// Market intel
 	m.addLog(m.logDivider(styleLogInfo, "MARKET"))
 	p := m.gs.DailyPrices
-	m.addLogStyled(styleLogInfo, fmt.Sprintf("  Lobster  Chix $%.2f  Qtr $%.2f  Select $%.2f  Jumbo $%.2f  Super $%.2f  Cull $%.2f",
+	m.addLogStyled(styleLogInfo, fmt.Sprintf("  Chix $%.2f   Quarters $%.2f   Selects $%.2f   Jumbos $%.2f   Supers $%.2f   Culls $%.2f",
 		p[0], p[1], p[2], p[3], p[4], p[5]))
-	m.addLog(fmt.Sprintf("  Diesel $%.2f/gal   Herring $%.2f/lb",
+	m.addLog(fmt.Sprintf("  Diesel $%.2f/gal   Herring bait $%.2f/lb",
 		m.gs.DieselPrice, m.gs.BaitPrice))
 	m.addLog("")
 
@@ -637,9 +673,11 @@ func (m *model) startMorning() {
 
 	m.addLog("")
 	if m.weather.CanFish {
-		m.addLogStyled(styleKey, "  [ENTER/F] Head out to fish   [S] Stay in port   [W] Wharf   [M] Maintenance")
+		m.addLog("")
+		m.addLog(lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true).Render("  ▶ ENTER to fish") + "   " + styleDim("[S] Stay in port   [W] Wharf   [M] Maintenance"))
 	} else {
-		m.addLogStyled(styleKey, "  [ENTER] Stay in port (weather)   [W] Wharf   [M] Maintenance")
+		m.addLog("")
+		m.addLog(styleWarn.Render("  ▶ ENTER to wait out weather") + "   " + styleDim("[W] Wharf   [M] Maintenance"))
 	}
 	m.syncViewport()
 }
@@ -670,36 +708,7 @@ func (m *model) doHaul() {
 	result := simulateHaul(m.gs, zone, m.weather)
 	m.haul = &result
 
-	m.addLog("")
-	m.addLog(m.logDivider(styleTitle, "HAULING"))
-	m.addLog(fmt.Sprintf("  Zone: %s — %s", zone.ID, zone.Name))
-	m.addLog(fmt.Sprintf("  Traps: %d  |  Gear health: %.0f%%", m.gs.Traps,
-		(m.gs.Engine+m.gs.Zincs+m.gs.Hydraulics)/3.0))
-	m.addLog("")
-
-	m.addLog( "0600 — Left the dock, steaming to grounds...")
-	m.addLog( fmt.Sprintf("0730 — First buoy in sight. Zone %s.", zone.ID))
-
-	if result.EngineDmg > 2.5 {
-		m.addLogStyled(styleLogWarn, "0815 — Engine running rough, losing a few RPM.")
-	}
-	if result.HydraulicsDmg > 2.0 {
-		m.addLogStyled(styleLogWarn, "0920 — Hauler hesitating on deep sets. Hydraulic pressure dropping.")
-	}
-	if result.ZincsDmg > 1.2 {
-		m.addLogStyled(styleLogInfo, "1010 — Mental note: zincs need checking this week.")
-	}
-
-	if result.CatchLbs > 200 {
-		m.addLogStyled(styleGood, fmt.Sprintf("1100 — Killing it out here. %.0f lbs and counting.", result.CatchLbs*0.6))
-	} else if result.CatchLbs > 80 {
-		m.addLogStyled(styleLogInfo, fmt.Sprintf("1100 — Steady haul. %.0f lbs so far.", result.CatchLbs*0.6))
-	} else {
-		m.addLogStyled(styleLogWarn, "1100 — Slim pickings. Traps running light.")
-	}
-	m.addLog( fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
-	m.addLog( fmt.Sprintf("1600 — Back at the dock. Fuel used: %d gal. Bait used: %d lbs.", result.FuelUsed, result.BaitUsed))
-
+	// Apply state changes immediately
 	m.gs.Engine = math.Max(0, m.gs.Engine-result.EngineDmg)
 	m.gs.Zincs = math.Max(0, m.gs.Zincs-result.ZincsDmg)
 	m.gs.Hydraulics = math.Max(0, m.gs.Hydraulics-result.HydraulicsDmg)
@@ -708,58 +717,78 @@ func (m *model) doHaul() {
 	m.gs.Freezer += result.CatchLbs
 	m.gs.TotalCatch += result.CatchLbs
 
+	// Immediate header — visible before animation starts
+	m.addLog("")
+	m.addLog(m.logDivider(styleTitle, "HAULING"))
+	m.addLog(fmt.Sprintf("  Zone: %s — %s  |  Traps: %d  |  Gear: %.0f%%",
+		zone.ID, zone.Name, m.gs.Traps, (m.gs.Engine+m.gs.Zincs+m.gs.Hydraulics)/3.0))
+	m.addLog("")
+	m.addLog(styleDim("  [SPACE] skip"))
+	m.syncViewport()
+
+	// Queue animated haul log entries
+	m.pendingLines = nil
+	m.queueLog("0600 — Left the dock, steaming to grounds...")
+	m.queueLog(fmt.Sprintf("0730 — First buoy in sight. Zone %s.", zone.ID))
+
+	if result.EngineDmg > 2.5 {
+		m.queueLogStyled(styleLogWarn, "0815 — Engine running rough, losing a few RPM.")
+	}
+	if result.HydraulicsDmg > 2.0 {
+		m.queueLogStyled(styleLogWarn, "0920 — Hauler hesitating on deep sets. Hydraulic pressure dropping.")
+	}
+	if result.ZincsDmg > 1.2 {
+		m.queueLog("1010 — Mental note: zincs need checking this week.")
+	}
 	if m.gs.BoatName == "Eastern 22" && m.weather.Type == WeatherSCA {
-		m.addLog("")
-		m.addLogStyled(styleLogDanger, "⚠ HULL WARNING: Eastern 22 took a beating in those swells!")
+		m.queueLogStyled(styleLogDanger, "1045 — ⚠ Eastern 22 taking a beating in these swells.")
 		hullDmg := result.HullDmg * 2.5
 		m.gs.Engine = math.Max(0, m.gs.Engine-hullDmg)
-		m.addLogStyled(styleLogDanger, fmt.Sprintf("  Additional engine stress: -%.1f%%", hullDmg))
 	}
+	if result.CatchLbs > 200 {
+		m.queueLogStyled(styleGood, fmt.Sprintf("1100 — Killing it out here. %.0f lbs and counting.", result.CatchLbs*0.6))
+	} else if result.CatchLbs > 80 {
+		m.queueLog(fmt.Sprintf("1100 — Steady haul. %.0f lbs so far.", result.CatchLbs*0.6))
+	} else {
+		m.queueLogStyled(styleLogWarn, "1100 — Slim pickings. Traps running light.")
+	}
+	m.queueLog(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
+	m.queueLog(fmt.Sprintf("1600 — Back at the dock."))
+	m.queueLog("")
 
-	// ── End of Day Debrief ────────────────────────────────────────────────────
-	m.addLog("")
-	m.addLog(m.logDivider(styleTitle, "END OF DAY"))
-	m.addLog("")
+	// End of day debrief — also queued so it animates in
+	m.queueLogStyled(styleTitle, m.logDivider(styleTitle, "END OF DAY"))
+	m.queueLog("")
+	m.queueLogStyled(styleLogInfo, "  CATCH")
 
-	// Catch by grade
-	m.addLogStyled(styleLogInfo, "  CATCH")
 	totalGross := 0.0
 	for _, g := range result.Grades {
 		gross := g.Lbs * g.Price
 		totalGross += gross
-		m.addLog(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s",
-			g.Name, g.Lbs, g.Price, moneyStr(gross)))
+		m.queueLog(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", g.Name, g.Lbs, g.Price, moneyStr(gross)))
 	}
-	m.addLog(fmt.Sprintf("    %-10s %5.1f lbs%s%s",
-		"TOTAL", result.CatchLbs, strings.Repeat(" ", 16), moneyStr(totalGross)))
-	m.addLog("")
+	m.queueLog(fmt.Sprintf("    %-10s %5.1f lbs%s%s", "TOTAL", result.CatchLbs, strings.Repeat(" ", 16), moneyStr(totalGross)))
+	m.queueLog("")
 
-	// Expenses
 	fuelCost := float64(result.FuelUsed) * m.gs.DieselPrice
 	baitCost := float64(result.BaitUsed) * m.gs.BaitPrice
-	m.addLogStyled(styleLogInfo, "  EXPENSES")
-	m.addLogStyled(styleLogExpense, fmt.Sprintf("    Fuel      %d gal × $%.2f          -%s", result.FuelUsed, m.gs.DieselPrice, moneyStr(fuelCost)))
-	m.addLogStyled(styleLogExpense, fmt.Sprintf("    Bait      %d lbs × $%.2f           -%s", result.BaitUsed, m.gs.BaitPrice, moneyStr(baitCost)))
-	m.addLog("")
+	m.queueLogStyled(styleLogInfo, "  EXPENSES")
+	m.queueLogStyled(styleLogExpense, fmt.Sprintf("    Fuel   %d gal × $%.2f  -%s", result.FuelUsed, m.gs.DieselPrice, moneyStr(fuelCost)))
+	m.queueLogStyled(styleLogExpense, fmt.Sprintf("    Bait   %d lbs × $%.2f  -%s", result.BaitUsed, m.gs.BaitPrice, moneyStr(baitCost)))
+	m.queueLog("")
 
-	// Net from trip
 	tripNet := totalGross - fuelCost - baitCost
 	if tripNet >= 0 {
-		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Trip net: %s", moneyStr(tripNet)))
+		m.queueLogStyled(styleLogGreen, fmt.Sprintf("  Trip net: %s", moneyStr(tripNet)))
 	} else {
-		m.addLogStyled(styleLogRed, fmt.Sprintf("  Trip net: -%s (in the hole)", moneyStr(-tripNet)))
+		m.queueLogStyled(styleLogRed, fmt.Sprintf("  Trip net: -%s (in the hole)", moneyStr(-tripNet)))
 	}
-	m.addLog("")
+	m.queueLog("")
 
-	// Deck log — flavor text
 	deckEntry := DeckLog(m.gs, zone, result)
-	m.addLogStyled(styleLogInfo, "  FROM THE DECK")
-	m.addLogStyled(styleLogDeck, fmt.Sprintf("  \"%s\"", deckEntry))
-	m.addLog("")
-
-	m.addLogStyled(styleKey, "  [ENTER] Head to co-op to sell")
-	saveGame(m.gs)
-	m.syncViewport()
+	m.queueLogStyled(styleLogInfo, "  FROM THE DECK")
+	m.queueLogStyled(styleLogDeck, fmt.Sprintf("  \"%s\"", deckEntry))
+	m.queueLog("")
 }
 
 func (m *model) doSell() {
@@ -814,9 +843,10 @@ func (m *model) doSell() {
 		m.addLogStyled(styleLogExpense, fmt.Sprintf("  Outstanding loan: %s", moneyStr(m.gs.BankLoan)))
 	}
 	m.addLog("")
-	m.addLogStyled(styleKey, "  [ENTER/N] Next day   [W] Wharf   [M] Maintenance")
 	saveGame(m.gs)
 	m.syncViewport()
+	m.phase = PhaseEvening
+	m.doEvening()
 }
 
 func (m *model) doBuy() {
@@ -842,7 +872,7 @@ func (m *model) doBuy() {
 			m.gs.Bait += add
 			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring for %s", add, moneyStr(cost))
 		}},
-		{"Fill Tank", 0, func() {
+		{"Fuel", 0, func() {
 			boat := BoatModels[m.gs.BoatName]
 			needed := boat.FuelCap - m.gs.Fuel
 			if needed <= 0 {
@@ -1012,12 +1042,11 @@ func (m model) View() string {
 	b.WriteString("\n")
 	// Persistent stats bar — always visible on every screen
 	boat := BoatModels[m.gs.BoatName]
-	statsBar := fmt.Sprintf("  Cash: %s   Fuel: %d/%d gal   Bait: %d/%d lbs   Traps: %d/%d   Day %d",
+	statsBar := fmt.Sprintf("  Cash: %s   Fuel: %d/%d gal   Bait: %d/%d lbs   Traps: %d/%d",
 		moneyStr(m.gs.Money),
 		m.gs.Fuel, boat.FuelCap,
 		m.gs.Bait, boat.BaitCap,
-		m.gs.Traps, boat.MaxTraps,
-		m.gs.Day)
+		m.gs.Traps, boat.MaxTraps)
 	b.WriteString(lipgloss.NewStyle().Foreground(colorBrightWhite).Background(lipgloss.Color("235")).Width(m.width).Render(statsBar))
 	b.WriteString("\n")
 	// Fix #7: consistent separator — full-width cyan rule
@@ -1256,7 +1285,7 @@ func (m model) viewMarketContent() string {
 	supplyItems := []wharfItem{
 		{"Bait (50 lbs)", fmt.Sprintf("$%.0f", 50*m.gs.BaitPrice), fmt.Sprintf("Herring @ $%.2f/lb — roughly one day on 20 traps", m.gs.BaitPrice)},
 		{"Bait (200 lbs)", fmt.Sprintf("$%.0f", 200*m.gs.BaitPrice), fmt.Sprintf("Bulk herring @ $%.2f/lb — 3-4 days supply", m.gs.BaitPrice)},
-		{"Fill Tank", func() string {
+		{"Fuel", func() string {
 			needed := BoatModels[m.gs.BoatName].FuelCap - m.gs.Fuel
 			if needed <= 0 { return "full" }
 			return fmt.Sprintf("$%.0f", float64(needed)*m.gs.DieselPrice)
@@ -1411,7 +1440,7 @@ func moneyStyled(v float64) string {
 }
 
 func styleDim(s string) string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render(s) // medium grey
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("246")).Render(s) // readable grey
 }
 
 func phaseName(p Phase) string {
