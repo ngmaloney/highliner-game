@@ -1,136 +1,100 @@
-# HIGHLINER 🦞
+# 🦞 HIGHLINER
 
-A passive Maine lobstering strategy simulator — DOS-aesthetic TUI game built with Go + Bubble Tea.
+![HIGHLINER Cover Art](highliner-cover.png)
 
-```
-╔═══════════════════════════════╗
-║  HIGHLINER  ║
-╚═══════════════════════════════╝
-```
+> *Bait. Set. Haul.*
 
-## Run It
+A DOS-aesthetic terminal lobster fishing simulator set on the coast of Maine. Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea). Runs in your terminal.
+
+---
+
+## What Is This
+
+You're a Maine lobsterman. You wake up, check the weather, pick your grounds, and haul traps. Some days are good. Some days a gale pins you in the harbor and costs you $20 just to sit there. Sometimes you find a bale of square grouper tangled in your buoy line and have to make a call.
+
+This is a strategy/grind sim — manage your gear, your cash, your fuel, and your vices. Buy better equipment. Upgrade your boat. Don't go broke.
+
+---
+
+## Features
+
+- **Animated haul log** — the day plays out line by line: 0600 you leave the dock, 1100 you check in, 1430 last trap aboard. Hit SPACE to skip.
+- **7 fishing zones** — from nearshore ledges to deep water drop-offs. Deeper = better lobster, more trap loss, more fuel.
+- **Realistic gear economics** — commercial trap prices ($150–175/trap), marine diesel ($4–5.50/gal), fresh herring bait ($0.40–0.80/lb). Prices roll daily.
+- **Grade-based pricing** — Chix, Quarters, Selects, Jumbos, Super Jumbos, Culls. Zone determines your grade mix.
+- **Equipment system** — Radar (fog access), GPS/Chartplotter (offshore zones), VHF Radio (distress events), Upgraded Hauler, Depth Sounder, Exhaust Heat Exchanger.
+- **Random mid-haul events** — berried hen (keep or throw back?), square grouper, Jonah crabs, ghost trap, boat in distress, storm coming in. Pause the animation and make a call.
+- **Trap loss** — 2% per trap in normal conditions, 5% in SCA. Deeper zones add more risk. Upgraded hauler helps.
+- **Weather system** — Clear, Fog, Small Craft Advisory, Gale. Fog without radar locks you to nearshore zones. SCA is fishable but rough.
+- **Evening vices** — Allen's Coffee Brandy, Six-Pack of Natty, scratch tickets, or early bed. Three nights running and you're hungover, can't fish.
+- **Dock fee** — $20/day whether you fish or not. The slip doesn't care about the weather.
+- **Fleet progression** — Eastern 22 → Calvin Beal 34 → Duffy 35 → Young Bros 40 → Wesmac 46.
+- **Persistent save** — saves after every meaningful action.
+
+---
+
+## Running It
 
 ```bash
-cd /home/ngmaloney/.openclaw/workspace/trap-sh
-go run .
+git clone https://github.com/ngmaloney/highliner-game.git
+cd highliner-game
+go build -o highliner .
+./highliner
 ```
 
-Or run the pre-built binary:
+Requires Go 1.21+. Terminal should be at least 120×40 for best experience.
 
-```bash
-./trap-sh
-```
+---
 
-Go 1.22+ required. (Installed at `~/go/bin/go` on pinchy.)
-
-## How to Play
-
-You're a Maine lobsterman. Wake up, check the weather, haul your traps, sell at the co-op. Upgrade your boat. Don't go broke.
-
-### Daily Loop
-
-1. **Morning Prep** — Weather report, maintenance alerts, resource check
-2. **Zone Select** — Pick your fishing grounds (A–G, varying yield/fuel cost)
-3. **Haul** — Watch the day unfold in the log
-4. **Sell** — Co-op takes your catch, pays market rate
-5. **Next Day** — Game autosaves to `~/.trap-sh/save.json`
-
-### Keyboard Navigation
+## Controls
 
 | Key | Action |
 |-----|--------|
-| `1` or `/` | Main Log (scrolling day events) |
-| `2` or `m` | Maintenance (boat diagnostics) |
-| `3` or `d` | Dock (gear, hold, stats) |
-| `4` or `w` | Wharf Market (bait, fuel, repairs) |
-| `ENTER` / `SPACE` | Confirm / advance phase |
-| `F` | Head out to fish (morning) |
-| `S` | Stay in port / skip haul |
-| `N` | Next day (after sell) |
-| `↑↓` / `J K` | Navigate market list |
+| `1–4` | Switch tabs (Log / Maintenance / Dock / Wharf) |
+| `↑↓` / `JK` | Scroll log / navigate menus |
+| `PgUp/PgDn` | Scroll log |
+| `ENTER` | Confirm / fish |
+| `SPACE` | Skip haul animation |
+| `S` | Stay in port |
+| `W` | Jump to Wharf |
+| `M` | Jump to Maintenance |
 | `Q` | Save and quit |
 
-### Starting Conditions
+---
 
-| Item | Value |
-|------|-------|
-| Vessel | Eastern 22 |
-| Cash | $500 |
-| Traps | 10 |
-| Bait | 50 lbs |
-| Fuel | 25 gal |
-| Boat health | 50% (engine / zincs / hydraulics) |
+## The Zones
 
-### Fleet Progression
-
-| Vessel | Traps | Notes |
-|--------|-------|-------|
-| Eastern 22 | 20 | Starter — high hull risk in SCA |
-| Calvin Beal 34 | 60 | $45,000 — solid workhorse |
-| Duffy 35 | 65 | $50,000 — slightly better hauls |
-| Young Bros 40 | 100 | $120,000 — serious operation |
-| Wesmac 46 | 150 | $280,000 — top of the fleet |
-
-### Weather
-
-| Condition | Fishing | Catch Modifier |
-|-----------|---------|----------------|
-| Clear | ✓ | 100% |
-| Fog | ✓ | 85% |
-| Small Craft Advisory | ✗ | — |
-| Gale Warning | ✗ | — |
-
-> ⚠ Eastern 22 + SCA = extra hull stress if you brave it.
-
-### Haul Formula
-
-```
-catch_lbs = base_haul × traps × (gear_health/100) × zone_mult × weather_mod × luck(0.7–1.3)
-```
-
-**Gear health** = average of Engine + Zincs + Hydraulics.
-
-### Component Degradation
-
-| Component | Wear/Day | Repair Cost | Risk if Ignored |
-|-----------|----------|-------------|-----------------|
-| Engine | ~2.5% | $12/pt | Breakdown at sea |
-| Zincs (anodes) | ~1.2% | $3/pt | Hull corrosion |
-| Hydraulics | ~1.8% | $8/pt | Hauler failure |
-
-### Save File
-
-Game saves automatically each day-end to:
-
-```
-~/.trap-sh/save.json
-```
-
-Delete it to start a new game.
+| Zone | Description | Notes |
+|------|-------------|-------|
+| A — Nearshore Ledges | Close in, well-picked | Always accessible |
+| B — Eastern Bay | Mid-range, decent grounds | Fog: need radar |
+| C — The Mudhole | Deep soft bottom, good keepers | Fog: need radar |
+| D — Green Island Shoals | Classic zone, reliable | Fog: need radar |
+| E — Outer Ledges | Far out, big lobster | Eastern 22 max range |
+| F — The Rip | Rough crossing, premium grounds | Need GPS + bigger boat |
+| G — Deep Water Drop-off | Long steam, cold water giants | Need GPS + bigger boat |
 
 ---
 
-## Project Structure
+## Equipment
 
-```
-trap-sh/
-├── main.go      — Entry point, program init
-├── state.go     — Game state, boats, weather, zones, haul calc
-├── model.go     — Bubble Tea model, views, styles
-├── go.mod
-├── go.sum
-└── README.md
-```
-
-## Tech Stack
-
-- **Go** — game logic, save/load
-- **[Bubble Tea](https://github.com/charmbracelet/bubbletea)** — TUI framework
-- **[Lip Gloss](https://github.com/charmbracelet/lipgloss)** — CGA/EGA-style terminal colors
-- **[Bubbles](https://github.com/charmbracelet/bubbles)** — viewport for log scrolling
-
-Colors approximate the CGA 16-color palette: bright green, amber, cyan on black.
+| Item | Cost | Effect |
+|------|------|--------|
+| Radar | $1,200 | Fish all zones in fog |
+| GPS/Chartplotter | $800 | Unlocks zones F and G |
+| VHF Radio | $250 | Weather forecast + distress events |
+| Upgraded Hauler | $600 | Slower hydraulic wear, less trap loss |
+| Depth Sounder | $400 | Full catch efficiency in deep zones (D–G) |
+| Exhaust Heat Exchanger | $3,000 | Reduces engine wear by 60% per haul |
 
 ---
 
-*"Haul more traps."*
+## Built With
+
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea) — TUI framework
+- [Lip Gloss](https://github.com/charmbracelet/lipgloss) — terminal styling
+- [Bubbles](https://github.com/charmbracelet/bubbles) — viewport component
+
+---
+
+*Pull or perish.*
