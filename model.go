@@ -164,7 +164,10 @@ type model struct {
 	currentZone  Zone
 	haul         *HaulResult
 	logLines     []string
-	pendingLines []string // queued lines for animated haul
+	pendingLines      []string     // queued lines for animated haul
+	postEventLines    []string     // lines to resume after event decision
+	activeEvent       *RandomEvent // current decision event, nil if none
+	eventHaulResult   *HaulResult  // stored so event consequences can modify catch
 	viewport     viewport.Model
 	altVP        viewport.Model // for maintenance/dock/market screens
 	width        int
@@ -200,6 +203,30 @@ func (m *model) initLog() {
 }
 
 var styleDefault = lipgloss.NewStyle().Foreground(colorBrightWhite)
+
+// ─── Random Events ────────────────────────────────────────────────────────────
+
+type EventType int
+
+const (
+	EventNone EventType = iota
+	EventBerriedHen
+	EventSquareGrouper
+	EventJonahCrabs
+	EventBoatDistress
+	EventGhostTrap
+	EventStormComing
+)
+
+type RandomEvent struct {
+	Type    EventType
+	Time    string // e.g. "1045"
+	Desc    string // log line shown before decision
+	KeyA    string // key to press
+	LabelA  string // label for option A
+	KeyB    string // key to press
+	LabelB  string // label for option B
+}
 
 // ─── Animated Haul ────────────────────────────────────────────────────────────
 
@@ -274,7 +301,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.pendingLines) > 0 {
 				return m, tickHaul()
 			}
-			// Animation done — sell and go to evening
+			// pendingLines empty — check if we're pausing for an event
+			if m.activeEvent != nil {
+				m.phase = PhaseDecision
+				m.showEventPrompt()
+				return m, nil
+			}
+			// Animation fully done — sell and go to evening
 			m.doSell()
 		}
 		return m, nil
@@ -305,7 +338,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Tab navigation — disabled during zone select (numbers 1-7 pick zones)
 		case "1", "/":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
 				m.screen = ScreenLog
 				m.confirmBuy = ""
 				m.syncViewport()
@@ -313,7 +346,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handlePhaseKey(msg.String())
 			}
 		case "2", "m":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
 				m.screen = ScreenMaintenance
 				m.confirmBuy = ""
 				m.syncAltViewport()
@@ -321,7 +354,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handlePhaseKey(msg.String())
 			}
 		case "3", "d":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
 				m.screen = ScreenDock
 				m.confirmBuy = ""
 				m.syncAltViewport()
@@ -329,7 +362,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handlePhaseKey(msg.String())
 			}
 		case "4", "w":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
 				m.screen = ScreenMarket
 				m.confirmBuy = ""
 				m.marketCursor = 0
@@ -381,7 +414,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 6 { // 7 items (0-6)
+			if m.marketCursor < 11 { // 12 items: 4 supplies + 3 repairs + 5 equipment (0-11)
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -408,7 +441,8 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.addLog("")
 				for i, z := range Zones {
 					if m.zoneBlocked(i) {
-						m.addLog(styleDim(fmt.Sprintf("  [%d] %s (%s) — %s  ✗ too far offshore for this vessel", i+1, z.ID, z.Name, z.Description)))
+						reason := m.zoneBlockReason(i)
+						m.addLog(styleDim(fmt.Sprintf("  [%d] %s (%s) — %s  %s", i+1, z.ID, z.Name, z.Description, reason)))
 					} else {
 						m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [%d] %s (%s) — %s", i+1, z.ID, z.Name, z.Description)))
 					}
@@ -469,6 +503,11 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			m.syncViewport()
 			m.doSell()
 			return m, nil
+		}
+
+	case PhaseDecision:
+		if m.activeEvent != nil {
+			m.resolveEvent(key)
 		}
 
 	case PhaseSell:
@@ -702,11 +741,60 @@ func (m *model) getAlerts() []string {
 	return alerts
 }
 
+// buildDebriefLines builds the end-of-day summary lines into the given queue
+func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
+	addQ := func(s string) {
+		if !strings.Contains(s, "\x1b[") && s != "" {
+			s = styleDefault.Render(s)
+		}
+		*queue = append(*queue, s)
+	}
+	addQS := func(style lipgloss.Style, s string) {
+		*queue = append(*queue, style.Render(s))
+	}
+
+	addQ("")
+	addQS(styleTitle, m.logDivider(styleTitle, "END OF DAY"))
+	addQ("")
+	addQS(styleLogInfo, "  CATCH")
+
+	totalGross := 0.0
+	for _, g := range result.Grades {
+		gross := g.Lbs * g.Price
+		totalGross += gross
+		addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", g.Name, g.Lbs, g.Price, moneyStr(gross)))
+	}
+	addQ(fmt.Sprintf("    %-10s %5.1f lbs%s%s", "TOTAL", result.CatchLbs, strings.Repeat(" ", 16), moneyStr(totalGross)))
+	addQ("")
+
+	fuelCost := float64(result.FuelUsed) * m.gs.DieselPrice
+	baitCost := float64(result.BaitUsed) * m.gs.BaitPrice
+	addQS(styleLogInfo, "  EXPENSES")
+	addQS(styleLogExpense, fmt.Sprintf("    Fuel   %d gal × $%.2f  -%s", result.FuelUsed, m.gs.DieselPrice, moneyStr(fuelCost)))
+	addQS(styleLogExpense, fmt.Sprintf("    Bait   %d lbs × $%.2f  -%s", result.BaitUsed, m.gs.BaitPrice, moneyStr(baitCost)))
+	addQ("")
+
+	tripNet := totalGross - fuelCost - baitCost
+	if tripNet >= 0 {
+		addQS(styleLogGreen, fmt.Sprintf("  Trip net: %s", moneyStr(tripNet)))
+	} else {
+		addQS(styleLogRed, fmt.Sprintf("  Trip net: -%s (in the hole)", moneyStr(-tripNet)))
+	}
+	addQ("")
+
+	zone := m.currentZone
+	deckEntry := DeckLog(m.gs, zone, result)
+	addQS(styleLogInfo, "  FROM THE DECK")
+	addQS(styleLogDeck, fmt.Sprintf("  \"%s\"", deckEntry))
+	addQ("")
+}
+
 func (m *model) doHaul() {
 	zone := Zones[m.selectedZone]
 	m.currentZone = zone
 	result := simulateHaul(m.gs, zone, m.weather)
 	m.haul = &result
+	m.eventHaulResult = &result
 
 	// Apply state changes immediately
 	m.gs.Engine = math.Max(0, m.gs.Engine-result.EngineDmg)
@@ -717,7 +805,10 @@ func (m *model) doHaul() {
 	m.gs.Freezer += result.CatchLbs
 	m.gs.TotalCatch += result.CatchLbs
 
-	// Immediate header — visible before animation starts
+	// Roll for a random event
+	m.activeEvent = RollRandomEvent(m.gs, m.weather)
+
+	// Immediate header
 	m.addLog("")
 	m.addLog(m.logDivider(styleTitle, "HAULING"))
 	m.addLog(fmt.Sprintf("  Zone: %s — %s  |  Traps: %d  |  Gear: %.0f%%",
@@ -726,7 +817,7 @@ func (m *model) doHaul() {
 	m.addLog(styleDim("  [SPACE] skip"))
 	m.syncViewport()
 
-	// Queue animated haul log entries
+	// Build pre-event queue (everything up to and including the event timestamp)
 	m.pendingLines = nil
 	m.queueLog("0600 — Left the dock, steaming to grounds...")
 	m.queueLog(fmt.Sprintf("0730 — First buoy in sight. Zone %s.", zone.ID))
@@ -745,6 +836,12 @@ func (m *model) doHaul() {
 		hullDmg := result.HullDmg * 2.5
 		m.gs.Engine = math.Max(0, m.gs.Engine-hullDmg)
 	}
+
+	// If event fires before the midday check, queue its description line
+	if m.activeEvent != nil && (m.activeEvent.Time < "1100") {
+		m.queueLogStyled(styleLogWarn, m.activeEvent.Desc)
+	}
+
 	if result.CatchLbs > 200 {
 		m.queueLogStyled(styleGood, fmt.Sprintf("1100 — Killing it out here. %.0f lbs and counting.", result.CatchLbs*0.6))
 	} else if result.CatchLbs > 80 {
@@ -752,43 +849,178 @@ func (m *model) doHaul() {
 	} else {
 		m.queueLogStyled(styleLogWarn, "1100 — Slim pickings. Traps running light.")
 	}
-	m.queueLog(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
-	m.queueLog(fmt.Sprintf("1600 — Back at the dock."))
-	m.queueLog("")
 
-	// End of day debrief — also queued so it animates in
-	m.queueLogStyled(styleTitle, m.logDivider(styleTitle, "END OF DAY"))
-	m.queueLog("")
-	m.queueLogStyled(styleLogInfo, "  CATCH")
-
-	totalGross := 0.0
-	for _, g := range result.Grades {
-		gross := g.Lbs * g.Price
-		totalGross += gross
-		m.queueLog(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", g.Name, g.Lbs, g.Price, moneyStr(gross)))
+	// If event fires after midday, queue its description line
+	if m.activeEvent != nil && (m.activeEvent.Time >= "1100") {
+		m.queueLogStyled(styleLogWarn, m.activeEvent.Desc)
 	}
-	m.queueLog(fmt.Sprintf("    %-10s %5.1f lbs%s%s", "TOTAL", result.CatchLbs, strings.Repeat(" ", 16), moneyStr(totalGross)))
-	m.queueLog("")
 
-	fuelCost := float64(result.FuelUsed) * m.gs.DieselPrice
-	baitCost := float64(result.BaitUsed) * m.gs.BaitPrice
-	m.queueLogStyled(styleLogInfo, "  EXPENSES")
-	m.queueLogStyled(styleLogExpense, fmt.Sprintf("    Fuel   %d gal × $%.2f  -%s", result.FuelUsed, m.gs.DieselPrice, moneyStr(fuelCost)))
-	m.queueLogStyled(styleLogExpense, fmt.Sprintf("    Bait   %d lbs × $%.2f  -%s", result.BaitUsed, m.gs.BaitPrice, moneyStr(baitCost)))
-	m.queueLog("")
-
-	tripNet := totalGross - fuelCost - baitCost
-	if tripNet >= 0 {
-		m.queueLogStyled(styleLogGreen, fmt.Sprintf("  Trip net: %s", moneyStr(tripNet)))
+	// Build post-event queue (rest of day + debrief) stored separately
+	m.postEventLines = nil
+	if m.activeEvent == nil {
+		// No event — everything goes in pendingLines
+		m.queueLog(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
+		m.queueLog("1600 — Back at the dock.")
+		m.buildDebriefLines(result, &m.pendingLines)
 	} else {
-		m.queueLogStyled(styleLogRed, fmt.Sprintf("  Trip net: -%s (in the hole)", moneyStr(-tripNet)))
+		// Event fires — post-event lines go in postEventLines
+		postAdd := func(s string) {
+			if !strings.Contains(s, "\x1b[") && s != "" {
+				s = styleDefault.Render(s)
+			}
+			m.postEventLines = append(m.postEventLines, s)
+		}
+		postAdd(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
+		postAdd("1600 — Back at the dock.")
+		m.buildDebriefLines(result, &m.postEventLines)
 	}
-	m.queueLog("")
+}
 
-	deckEntry := DeckLog(m.gs, zone, result)
-	m.queueLogStyled(styleLogInfo, "  FROM THE DECK")
-	m.queueLogStyled(styleLogDeck, fmt.Sprintf("  \"%s\"", deckEntry))
-	m.queueLog("")
+func (m *model) showEventPrompt() {
+	if m.activeEvent == nil {
+		return
+	}
+	m.addLog("")
+	m.addLog(styleLogWarn.Bold(true).Render("  ── DECISION ──────────────────────────"))
+	m.addLog(fmt.Sprintf("  %s", m.activeEvent.LabelA))
+	m.addLog(fmt.Sprintf("  %s", m.activeEvent.LabelB))
+	m.syncViewport()
+}
+
+func (m *model) resolveEvent(key string) {
+	ev := m.activeEvent
+	if ev == nil {
+		return
+	}
+	result := m.eventHaulResult
+
+	m.addLog("")
+	switch ev.Type {
+	case EventBerriedHen:
+		if key == ev.KeyA { // keep
+			lbs := 3.5
+			m.gs.Freezer += lbs
+			m.gs.TotalCatch += lbs
+			if result != nil {
+				result.CatchLbs += lbs
+			}
+			m.addLogStyled(styleLogGreen, "  You toss her in the tank. +3.5 lbs.")
+			if rand.Float64() < 0.20 {
+				fine := 1000.0
+				m.gs.Money -= fine
+				m.addLogStyled(styleLogDanger, "  Marine Patrol was watching. $1,000 fine.")
+			}
+		} else {
+			m.addLog("  She hits the water swimming. Good fisherman.")
+		}
+
+	case EventSquareGrouper:
+		if key == ev.KeyA { // keep
+			m.gs.Money += 2500
+			m.addLogStyled(styleLogGreen, "  $2,500 in the bilge. You didn't see anything.")
+			if rand.Float64() < 0.15 {
+				fine := 5000.0
+				m.gs.Money -= fine
+				m.addLogStyled(styleLogDanger, "  DEA boarded you at the dock. $5,000 fine. One day lost.")
+				m.gs.Hungover = true // use Hungover to skip next day
+			}
+		} else {
+			m.addLog("  CG thanks you on the radio. You feel okay about it.")
+			if rand.Float64() < 0.40 {
+				m.addLogStyled(styleLogGreen, "  Co-op comp'd your fuel today. Good karma.")
+				m.gs.Money += float64(result.FuelUsed) * m.gs.DieselPrice
+			}
+		}
+
+	case EventJonahCrabs:
+		if key == ev.KeyA { // keep
+			bonus := 40.0 + rand.Float64()*50.0
+			m.gs.Money += bonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Jonah crabs brought in %s at the co-op.", moneyStr(bonus)))
+		} else {
+			m.addLog("  Tossed 'em back. Traps run cleaner without the crap.")
+		}
+
+	case EventGhostTrap:
+		if key == ev.KeyA { // haul it
+			lbs := 10.0 + rand.Float64()*20.0
+			m.gs.Freezer += lbs
+			m.gs.TotalCatch += lbs
+			if result != nil {
+				result.CatchLbs += lbs
+			}
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Ghost trap had %.0f lbs in it. Yours now.", lbs))
+		} else {
+			m.addLog("  Left it. Not your gear, not your problem.")
+		}
+
+	case EventStormComing:
+		if key == ev.KeyA { // push through
+			m.addLog("  You push through. Storm hits hard on the run home.")
+			dmg := 5.0 + rand.Float64()*10.0
+			m.gs.Engine = math.Max(0, m.gs.Engine-dmg)
+			m.gs.Hydraulics = math.Max(0, m.gs.Hydraulics-dmg*0.5)
+			m.addLogStyled(styleLogWarn, fmt.Sprintf("  Took a beating: engine -%.0f%%, hydraulics -%.0f%%", dmg, dmg*0.5))
+		} else { // head in
+			// Lose ~40% of catch
+			lost := m.gs.Freezer * 0.4
+			m.gs.Freezer -= lost
+			m.gs.TotalCatch -= lost
+			if result != nil {
+				result.CatchLbs -= lost
+				if result.CatchLbs < 0 {
+					result.CatchLbs = 0
+				}
+			}
+			m.addLog("  You head in. Smart call. Storm was nasty.")
+			m.addLogStyled(styleLogWarn, fmt.Sprintf("  Left %.0f lbs in the water. Made it home safe.", lost))
+		}
+
+	case EventBoatDistress:
+		if key == ev.KeyA { // help
+			m.addLog("  You haul ass to their position. They're taking on water fast.")
+			roll := rand.Float64()
+			switch {
+			case roll < 0.40:
+				lbs := 20.0 + rand.Float64()*15.0
+				m.gs.Freezer += lbs
+				m.gs.TotalCatch += lbs
+				m.addLogStyled(styleLogGreen, fmt.Sprintf("  Captain tosses you a crate. %.0f lbs of select. 'Take it.'", lbs))
+			case roll < 0.65:
+				m.addLog("  Old timer hands you a bottle of Allen's. 'Buy you one sometime, kid.'")
+				m.gs.DaysWithBooze = 0 // free night, no cost
+			case roll < 0.80:
+				m.addLog("  He pulls a scratch ticket from his wallet. 'Least I can do.'")
+				winnings := scratchTicket()
+				if winnings > 0 {
+					m.gs.Money += float64(winnings)
+					m.addLogStyled(styleLogGreen, fmt.Sprintf("  Scratch ticket: +$%d!", winnings))
+				} else {
+					m.addLog("  Scratch ticket: loser. Still felt good helping.")
+				}
+			case roll < 0.90:
+				bonus := 0.50
+				m.addLogStyled(styleLogGreen, fmt.Sprintf("  He radioed his co-op contact. You're getting +$%.2f/lb on today's catch.", bonus))
+				m.gs.Money += result.CatchLbs * bonus
+			default:
+				m.addLog("  A nod and a wave. Good fisherman karma.")
+			}
+		} else {
+			m.addLog("  You keep hauling. Someone else will get it.")
+			if rand.Float64() < 0.20 {
+				m.addLog(styleDim("  Heard about it at the co-op. Nobody said anything but you felt it."))
+			}
+		}
+	}
+
+	// Clear event, move post-event lines to pending, resume animation
+	m.activeEvent = nil
+	m.eventHaulResult = nil
+	m.pendingLines = append(m.pendingLines, m.postEventLines...)
+	m.postEventLines = nil
+	m.phase = PhaseHauling
+	m.addLog("")
+	m.syncViewport()
 }
 
 func (m *model) doSell() {
@@ -958,6 +1190,42 @@ func (m *model) doBuy() {
 				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(cost), moneyStr(cost-m.gs.Money))
 			}
 		}},
+		// Equipment (indices 7-11)
+		{"Radar", 1200, func() {
+			if m.gs.HasRadar { m.confirmBuy = "Already installed."; return }
+			if m.gs.Money < 1200 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1200), moneyStr(1200-m.gs.Money)); return }
+			m.gs.Money -= 1200
+			m.gs.HasRadar = true
+			m.confirmBuy = "Radar installed. Fish in fog."
+		}},
+		{"GPS/Chartplotter", 800, func() {
+			if m.gs.HasGPS { m.confirmBuy = "Already installed."; return }
+			if m.gs.Money < 800 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(800), moneyStr(800-m.gs.Money)); return }
+			m.gs.Money -= 800
+			m.gs.HasGPS = true
+			m.confirmBuy = "GPS installed. Zones F and G unlocked."
+		}},
+		{"VHF Radio", 250, func() {
+			if m.gs.HasVHF { m.confirmBuy = "Already installed."; return }
+			if m.gs.Money < 250 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(250), moneyStr(250-m.gs.Money)); return }
+			m.gs.Money -= 250
+			m.gs.HasVHF = true
+			m.confirmBuy = "VHF installed. You can hear channel 16 now."
+		}},
+		{"Upgraded Hauler", 600, func() {
+			if m.gs.HasUpgHauler { m.confirmBuy = "Already installed."; return }
+			if m.gs.Money < 600 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(600), moneyStr(600-m.gs.Money)); return }
+			m.gs.Money -= 600
+			m.gs.HasUpgHauler = true
+			m.confirmBuy = "Hauler upgraded. Hydraulics will thank you."
+		}},
+		{"Depth Sounder", 400, func() {
+			if m.gs.HasDepthSound { m.confirmBuy = "Already installed."; return }
+			if m.gs.Money < 400 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(400), moneyStr(400-m.gs.Money)); return }
+			m.gs.Money -= 400
+			m.gs.HasDepthSound = true
+			m.confirmBuy = "Depth sounder installed. You can read the bottom now."
+		}},
 	}
 
 	if m.marketCursor >= len(items) {
@@ -1082,7 +1350,11 @@ func (m model) View() string {
 		leftBar += lipgloss.NewStyle().Background(colorCyan).Foreground(colorBrightGreen).Render("  " + m.saveMsg)
 	}
 
-	rightBar := sbStyle.Render(" [Q] Save+Quit ")
+	scrollHint := ""
+	if m.screen == ScreenLog {
+		scrollHint = sbStyle.Render(" [↑↓/PgUp/PgDn] scroll ") 
+	}
+	rightBar := scrollHint + sbStyle.Render(" [Q] Save+Quit ")
 
 	leftW := lipgloss.Width(leftBar)
 	rightW := lipgloss.Width(rightBar)
@@ -1168,12 +1440,22 @@ func label(s string, width int) string {
 
 // trapIncrement returns (how many traps to add, cost per trap) based on boat capacity
 // zoneBlocked returns true if the current boat can't safely reach this zone
-func (m *model) zoneBlocked(zoneIdx int) bool {
+func (m *model) zoneBlockReason(zoneIdx int) string {
 	boat := BoatModels[m.gs.BoatName]
-	if boat.MaxSteamHrs == 0 {
-		return false
+	if m.weather.Type == WeatherFog && !m.gs.HasRadar && zoneIdx > 0 {
+		return "✗ fog — no radar"
 	}
-	return Zones[zoneIdx].SteamHours > boat.MaxSteamHrs
+	if !m.gs.HasGPS && Zones[zoneIdx].SteamHours > 8.0 {
+		return "✗ need GPS/chartplotter"
+	}
+	if boat.MaxSteamHrs > 0 && Zones[zoneIdx].SteamHours > boat.MaxSteamHrs {
+		return "✗ too far offshore for this vessel"
+	}
+	return ""
+}
+
+func (m *model) zoneBlocked(zoneIdx int) bool {
+	return m.zoneBlockReason(zoneIdx) != ""
 }
 
 func trapIncrement(maxTraps int) (int, float64) {
@@ -1319,8 +1601,47 @@ func (m model) viewMarketContent() string {
 		}(), fmt.Sprintf("%.0f%% → 100%%  |  %s", m.gs.Hydraulics, healthStr(m.gs.Hydraulics))},
 	}
 
-	// All items in order for cursor navigation
+			// Equipment items
+	equipItems := []wharfItem{
+		{"Radar", func() string {
+			if m.gs.HasRadar { return "owned" }
+			return "$1,200"
+		}(), func() string {
+			if m.gs.HasRadar { return "✓ fish all zones in fog" }
+			return "fish all zones in fog"
+		}()},
+		{"GPS/Chartplotter", func() string {
+			if m.gs.HasGPS { return "owned" }
+			return "$800"
+		}(), func() string {
+			if m.gs.HasGPS { return "✓ unlocks zones F and G" }
+			return "unlocks zones F and G"
+		}()},
+		{"VHF Radio", func() string {
+			if m.gs.HasVHF { return "owned" }
+			return "$250"
+		}(), func() string {
+			if m.gs.HasVHF { return "✓ weather forecast + distress events" }
+			return "weather forecast + distress events"
+		}()},
+		{"Upgraded Hauler", func() string {
+			if m.gs.HasUpgHauler { return "owned" }
+			return "$600"
+		}(), func() string {
+			if m.gs.HasUpgHauler { return "✓ slower hydraulic wear" }
+			return "slower hydraulic wear"
+		}()},
+		{"Depth Sounder", func() string {
+			if m.gs.HasDepthSound { return "owned" }
+			return "$400"
+		}(), func() string {
+			if m.gs.HasDepthSound { return "✓ full efficiency in deep zones" }
+			return "full efficiency in deep zones (D-G)"
+		}()},
+	}
+
 	allItems := append(supplyItems, repairItems...)
+	allItems = append(allItems, equipItems...)
 
 	renderItems := func(items []wharfItem, offset int) {
 		for i, item := range items {
@@ -1345,6 +1666,9 @@ func (m model) viewMarketContent() string {
 	b.WriteString("\n")
 	b.WriteString(subHeader("REPAIRS", m.width))
 	renderItems(repairItems, len(supplyItems))
+	b.WriteString("\n")
+	b.WriteString(subHeader("EQUIPMENT", m.width))
+	renderItems(equipItems, len(supplyItems)+len(repairItems))
 
 	b.WriteString("\n")
 	b.WriteString(styleKey.Render("  [↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs"))
@@ -1451,6 +1775,8 @@ func phaseName(p Phase) string {
 		return "ZONE SELECT"
 	case PhaseHauling:
 		return "HAULING"
+	case PhaseDecision:
+		return "DECISION"
 	case PhaseSell:
 		return "CO-OP SALE"
 	case PhaseEvening:

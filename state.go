@@ -128,6 +128,7 @@ const (
 	PhaseMorning Phase = iota
 	PhaseZoneSelect
 	PhaseHauling
+	PhaseDecision // mid-haul random event waiting for player input
 	PhaseSell
 	PhaseEvening // vices: booze, scratch tickets
 	PhaseGameOver
@@ -172,6 +173,13 @@ type GameState struct {
 	DailyPrices  [6]float64 `json:"daily_prices"`
 	DieselPrice  float64    `json:"diesel_price"`  // $/gal, marine diesel
 	BaitPrice    float64    `json:"bait_price"`    // $/lb, fresh herring spot price
+
+	// Equipment
+	HasRadar      bool `json:"has_radar"`       // fog: unlocks all zones
+	HasGPS        bool `json:"has_gps"`         // unlocks zones F/G
+	HasVHF        bool `json:"has_vhf"`         // weather forecast + distress events
+	HasUpgHauler  bool `json:"has_upg_hauler"`  // slower hydraulic wear
+	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 }
 
 func newGame() *GameState {
@@ -471,6 +479,62 @@ var flavorPool = []flavorEntry{
 			"Didn't lose a single buoy today. That's worth noting.",
 		},
 	},
+}
+
+// RollRandomEvent returns a random mid-haul event, or nil (85% chance of none)
+func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
+	if rand.Float64() > 0.15 {
+		return nil
+	}
+	events := []RandomEvent{
+		{
+			Type:   EventBerriedHen,
+			Time:   "1045",
+			Desc:   "1045 — Big mama came up. V-notch, eggs all over the swimmerets. She's a broodstock female.",
+			KeyA:   "k", LabelA: "[K] Keep her (+$18, risk fine)",
+			KeyB:   "t", LabelB: "[T] Throw her back (legal)",
+		},
+		{
+			Type:   EventSquareGrouper,
+			Time:   "0910",
+			Desc:   "0910 — Something big tangled in the buoy line. Wrapped in plastic, waterlogged. You know what this is.",
+			KeyA:   "k", LabelA: "[K] Haul it aboard (+$2,500)",
+			KeyB:   "r", LabelB: "[R] Radio the Coast Guard",
+		},
+		{
+			Type:   EventJonahCrabs,
+			Time:   "1115",
+			Desc:   "1115 — Traps are packed with Jonah crabs today. Legal to keep. You could bring these in.",
+			KeyA:   "k", LabelA: "[K] Keep them (extra cash)",
+			KeyB:   "t", LabelB: "[T] Toss back (not worth the hassle)",
+		},
+		{
+			Type:   EventGhostTrap,
+			Time:   "1200",
+			Desc:   "1200 — Found a derelict trap on the bottom. No buoy, no tag. Full of lobsters.",
+			KeyA:   "h", LabelA: "[H] Haul it up (gray area, extra lbs)",
+			KeyB:   "l", LabelB: "[L] Leave it",
+		},
+		{
+			Type:   EventStormComing,
+			Time:   "1145",
+			Desc:   "1145 — NOAA just issued a Gale Warning. Storm moving faster than forecast. You're an hour from the last set.",
+			KeyA:   "p", LabelA: "[P] Push through and finish",
+			KeyB:   "h", LabelB: "[H] Head in now (keep what you have)",
+		},
+	}
+	// Boat in distress only if player has VHF
+	if gs.HasVHF {
+		events = append(events, RandomEvent{
+			Type:   EventBoatDistress,
+			Time:   "0955",
+			Desc:   "0955 — Mayday on channel 16. Lobsterboat taking on water, 2 miles east.",
+			KeyA:   "h", LabelA: "[H] Go help (lose 2 hrs fishing)",
+			KeyB:   "i", LabelB: "[I] Keep hauling (someone else will get it)",
+		})
+	}
+	e := events[rand.Intn(len(events))]
+	return &e
 }
 
 // DeckLog returns a contextual flavor text entry for the end-of-day summary
