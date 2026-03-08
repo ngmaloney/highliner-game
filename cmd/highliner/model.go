@@ -1332,10 +1332,26 @@ func (m *model) doBuy() {
 		}},
 		{"Exhaust Heat Exchanger", 5000, func() {
 			if m.gs.HasExhaustHX { m.confirmBuy = "Already installed."; return }
-			if m.gs.Money < 3000 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(3000), moneyStr(3000-m.gs.Money)); return }
-			m.gs.Money -= 3000
+			if m.gs.Money < 5000 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(5000), moneyStr(5000-m.gs.Money)); return }
+			m.gs.Money -= 5000
 			m.gs.HasExhaustHX = true
 			m.confirmBuy = "Heat exchanger installed. Engine'll run cooler and last longer."
+		}},
+		{"Crab Permit", 500, func() {
+			if m.gs.HasCrabPermit { m.confirmBuy = "Already licensed."; return }
+			if m.gs.Money < 500 { m.confirmBuy = fmt.Sprintf("Need $500 — short by %s", moneyStr(500-m.gs.Money)); return }
+			m.gs.Money -= 500
+			m.gs.HasCrabPermit = true
+			m.confirmBuy = "Crab permit issued. Jonah and rock crabs are yours to keep."
+		}},
+		{"Groundfish Permit", 1500, func() {
+			boat := BoatModels[m.gs.BoatName]
+			if m.gs.HasGroundfishPermit { m.confirmBuy = "Already licensed."; return }
+			if boat.Length < 34 { m.confirmBuy = "NOAA requires a vessel 34 ft or larger."; return }
+			if m.gs.Money < 1500 { m.confirmBuy = fmt.Sprintf("Need $1,500 — short by %s", moneyStr(1500-m.gs.Money)); return }
+			m.gs.Money -= 1500
+			m.gs.HasGroundfishPermit = true
+			m.confirmBuy = "Groundfish permit issued. Monkfish, cusk, and halibut are yours to keep."
 		}},
 	}
 
@@ -1635,29 +1651,6 @@ func (m model) viewDockContent() string {
 	b.WriteString(fmt.Sprintf("  %s %.0f lbs\n", label("Total catch:", 12), m.gs.TotalCatch))
 	b.WriteString(fmt.Sprintf("  %s %s\n\n", label("Revenue:", 12), styleValue.Render(moneyStr(m.gs.TotalRevenue))))
 
-	b.WriteString(subHeader("LICENSES", m.width))
-	crabStatus := styleDim("not licensed — Jonah/rock crabs are throwbacks")
-	if m.gs.HasCrabPermit {
-		crabStatus = styleGood.Render("✓ licensed")
-	}
-	currentBoat := BoatModels[m.gs.BoatName]
-	var groundfishStatus string
-	if m.gs.HasGroundfishPermit {
-		groundfishStatus = styleGood.Render("✓ licensed")
-	} else if currentBoat.Length < 34 {
-		groundfishStatus = styleWarn.Render("requires 34 ft+ vessel")
-	} else {
-		groundfishStatus = styleDim("not licensed — monkfish/cusk/halibut are throwbacks")
-	}
-	b.WriteString(fmt.Sprintf("  %-22s %s\n", styleLabel.Render("Crab Permit ($500):"), crabStatus))
-	b.WriteString(fmt.Sprintf("  %-22s %s\n\n", styleLabel.Render("Groundfish Permit ($1,500):"), groundfishStatus))
-	if !m.gs.HasCrabPermit || !m.gs.HasGroundfishPermit {
-		b.WriteString(styleDim("  Buy licenses at the harbormaster's office: [B]uy Crab / [G]roundfish\n\n"))
-	}
-	if m.confirmBuy != "" && m.screen == ScreenDock {
-		b.WriteString(styleLogRevenue.Render(fmt.Sprintf("  ✓ %s", m.confirmBuy)) + "\n\n")
-	}
-
 	b.WriteString(subHeader("FLEET PROGRESSION", m.width))
 	fleetOrder := []string{"Eastern 22", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
 	for _, name := range fleetOrder {
@@ -1791,6 +1784,22 @@ func (m model) viewMarketContent() string {
 		}(), func() string {
 			if m.gs.HasExhaustHX { return "✓ engine runs cooler, less wear" }
 			return "reduces engine wear per haul"
+		}()},
+		{"Crab Permit", func() string {
+			if m.gs.HasCrabPermit { return "licensed" }
+			return "$500"
+		}(), func() string {
+			if m.gs.HasCrabPermit { return "✓ keep Jonah + rock crab" }
+			return "keep and sell Jonah + rock crab"
+		}()},
+		{"Groundfish Permit", func() string {
+			if m.gs.HasGroundfishPermit { return "licensed" }
+			boat := BoatModels[m.gs.BoatName]
+			if boat.Length < 34 { return "34ft+ only" }
+			return "$1,500"
+		}(), func() string {
+			if m.gs.HasGroundfishPermit { return "✓ keep monkfish, cusk, halibut" }
+			return "keep and sell monkfish, cusk, halibut"
 		}()},
 	}
 
