@@ -280,20 +280,24 @@ func (m model) viewMarketContent() string {
 			}
 			return fmt.Sprintf("%d lbs @ $%.2f/lb — enough for today's %d traps", need, m.gs.BaitPrice, m.gs.Traps)
 		}()},
-		{"Bait — fill up", func() string {
-			cap := m.gs.EffectiveBaitCap()
-			need := max(0, cap-m.gs.Bait)
+		{"Bait — fill freezer", func() string {
+			if !m.gs.HasBaitFreezer {
+				return styleWarn.Render("freezer required")
+			}
+			need := max(0, 500-m.gs.Bait)
 			if need <= 0 {
 				return "full"
 			}
 			return fmt.Sprintf("$%.0f", float64(need)*m.gs.BaitPrice*0.85)
 		}(), func() string {
-			cap := m.gs.EffectiveBaitCap()
-			need := max(0, cap-m.gs.Bait)
-			if need <= 0 {
-				return "bait storage full"
+			if !m.gs.HasBaitFreezer {
+				return "install bait freezer to unlock bulk buying"
 			}
-			return fmt.Sprintf("%d lbs @ $%.2f/lb — 15%% bulk rate, fills to %d lb cap", need, m.gs.BaitPrice*0.85, cap)
+			need := max(0, 500-m.gs.Bait)
+			if need <= 0 {
+				return "freezer full"
+			}
+			return fmt.Sprintf("%d lbs @ $%.2f/lb — 15%% bulk rate, fills to 500 lb freezer", need, m.gs.BaitPrice*0.85)
 		}()},
 		{"Fuel", func() string {
 			needed := BoatModels[m.gs.BoatName].FuelCap - m.gs.Fuel

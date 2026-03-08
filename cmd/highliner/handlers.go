@@ -1222,11 +1222,14 @@ func (m *model) doBuy() {
 			m.gs.Bait += add
 			m.confirmBuy = fmt.Sprintf("Loaded %d lbs for today — %s", add, moneyStr(cost))
 		}},
-		{"Bait — fill up", 0, func() {
-			cap := m.gs.EffectiveBaitCap()
-			add := max(0, cap-m.gs.Bait)
+		{"Bait — fill freezer", 0, func() {
+			if !m.gs.HasBaitFreezer {
+				m.confirmBuy = "Install a bait freezer first."
+				return
+			}
+			add := max(0, 500-m.gs.Bait)
 			if add <= 0 {
-				m.confirmBuy = "Bait storage full."
+				m.confirmBuy = "Freezer is full."
 				return
 			}
 			cost := float64(add) * m.gs.BaitPrice * 0.85
