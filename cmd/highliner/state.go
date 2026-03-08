@@ -525,16 +525,19 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		baitUsed = gs.Bait
 	}
 
-	// Component wear: diesel engines are durable; zincs corrode from seawater
-	// Engine: ~0.5-1% wear per day; heat exchanger reduces wear by 60%
-	engineDmg := 0.5 + rand.Float64()*0.5
+	// Component wear scales with steam hours — deeper zones = longer run = more wear
+	// Zone A (~2.5 hrs) is baseline; Zone G (~10 hrs) is 4x the steam
+	steamFactor := zone.SteamHours / 4.0 // normalize: 4 hrs = 1.0x
+
+	// Engine: ~0.5-1% wear at baseline; heat exchanger reduces 60%
+	engineDmg := (0.5 + rand.Float64()*0.5) * steamFactor
 	if gs.HasExhaustHX {
 		engineDmg *= 0.4
 	}
-	// Zincs: ~1-2% per day (saltwater exposure)
-	zincsDmg := 1.0 + rand.Float64()*1.0
-	// Hydraulics: ~0.4-0.9% per day
-	hydDmg := 0.4 + rand.Float64()*0.5
+	// Zincs: saltwater exposure scales with time on the water
+	zincsDmg := (1.0 + rand.Float64()*1.0) * steamFactor
+	// Hydraulics: hauler cycles — more traps and longer run means more pump hours
+	hydDmg := (0.4 + rand.Float64()*0.5) * steamFactor
 
 	// Hull damage from weather
 	hullDmg := weather.HullDamage * boat.HullRisk * (rand.Float64() * 0.5 + 0.5)
