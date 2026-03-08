@@ -926,39 +926,46 @@ func (m *model) doHaul() {
 		}
 	}
 
-	// If event fires before the midday check, queue its description line
-	if m.activeEvent != nil && (m.activeEvent.Time < "1100") {
-		m.queueLogStyled(styleLogWarn, m.activeEvent.Desc)
-	}
-
-	if result.CatchLbs > 200 {
-		m.queueLogStyled(styleGood, fmt.Sprintf("1100 — Killing it out here. %.0f lbs and counting.", result.CatchLbs*0.6))
-	} else if result.CatchLbs > 80 {
-		m.queueLog(fmt.Sprintf("1100 — Steady haul. %.0f lbs so far.", result.CatchLbs*0.6))
-	} else {
-		m.queueLogStyled(styleLogWarn, "1100 — Slim pickings. Traps running light.")
-	}
-
-	// If event fires after midday, queue its description line
-	if m.activeEvent != nil && (m.activeEvent.Time >= "1100") {
-		m.queueLogStyled(styleLogWarn, m.activeEvent.Desc)
-	}
-
 	// Build post-event queue (rest of day + debrief) stored separately
 	m.postEventLines = nil
+
+	midday := func(queue *[]string) {
+		addTo := func(s string) {
+			if !strings.Contains(s, "\x1b[") && s != "" {
+				s = styleDefault.Render(s)
+			}
+			*queue = append(*queue, s)
+		}
+		addToStyled := func(style lipgloss.Style, s string) {
+			addTo(style.Render(s))
+		}
+		if result.CatchLbs > 200 {
+			addToStyled(styleGood, fmt.Sprintf("1100 — Killing it out here. %.0f lbs and counting.", result.CatchLbs*0.6))
+		} else if result.CatchLbs > 80 {
+			addTo(fmt.Sprintf("1100 — Steady haul. %.0f lbs so far.", result.CatchLbs*0.6))
+		} else {
+			addToStyled(styleLogWarn, "1100 — Slim pickings. Traps running light.")
+		}
+	}
+
 	if m.activeEvent == nil {
-		// No event — everything goes in pendingLines
+		// No event — everything flows into pendingLines
+		midday(&m.pendingLines)
 		m.queueLog(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
 		m.queueLog("1600 — Back at the dock.")
 		m.buildDebriefLines(result, &m.pendingLines)
 	} else {
-		// Event fires — post-event lines go in postEventLines
+		// Event fires — event desc is the last pendingLine; everything after goes to postEventLines
+		m.queueLogStyled(styleLogWarn, m.activeEvent.Desc)
 		postAdd := func(s string) {
 			if !strings.Contains(s, "\x1b[") && s != "" {
 				s = styleDefault.Render(s)
 			}
 			m.postEventLines = append(m.postEventLines, s)
 		}
+		postAddStyled := func(style lipgloss.Style, s string) { postAdd(style.Render(s)) }
+		_ = postAddStyled
+		midday(&m.postEventLines)
 		postAdd(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
 		postAdd("1600 — Back at the dock.")
 		m.buildDebriefLines(result, &m.postEventLines)
