@@ -575,8 +575,8 @@ func (m model) viewMarketContent() string {
 			costStr = styleDanger.Render(moneyStr(float64(bm.Cost)))
 			descStr = styleDim(fmt.Sprintf("need %s more", moneyStr(float64(bm.Cost)-m.gs.Money)))
 		} else {
-			costStr = styleGood.Render(moneyStr(float64(bm.Cost)))
-			descStr = styleDim(fmt.Sprintf("%d traps  %d ft", bm.MaxTraps, bm.Length))
+			costStr = styleValue.Render(moneyStr(float64(bm.Cost)))
+			descStr = fmt.Sprintf("%d traps  %d ft", bm.MaxTraps, bm.Length)
 		}
 
 		b.WriteString(fmt.Sprintf("%s%-22s  %-12s  %s\n",
