@@ -136,37 +136,10 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 
 	case PhaseEvening:
 		switch key {
-		case "1": // Allen's Coffee Brandy
-			if m.gs.Money >= 12 {
-				m.gs.Money -= 12
-				m.gs.DaysWithBooze++
-				m.addLog("")
-				if m.gs.DaysWithBooze >= 3 {
-					m.gs.Hungover = true
-					m.addLogStyled(styleLogDanger, "  You close the bar down. Again.")
-					m.addLogStyled(styleLogDanger, "  Tomorrow's gonna be rough.")
-				} else {
-					m.addLogStyled(styleLogInfo, "  Few nips of Allen's. Sleep like a rock.")
-				}
-				m.doNextDay()
-			} else {
-				m.addLog(styleWarn.Render("  Not enough cash for a bottle."))
-				m.syncViewport()
-			}
-		case "2": // Six-Pack of Natty
-			if m.gs.Money >= 9 {
-				m.gs.Money -= 9
-				if m.gs.DaysWithBooze < 2 {
-					m.gs.DaysWithBooze++
-				}
-				m.addLog("")
-				m.addLogStyled(styleLogInfo, "  Crack a few on the float. Not a bad evening.")
-				m.doNextDay()
-			} else {
-				m.addLog(styleWarn.Render("  Can't even afford a six-pack of Natty. Rough week."))
-				m.syncViewport()
-			}
-		case "3": // Scratch ticket
+		case "enter", " ", "1": // Early night
+			m.gs.DaysWithBooze = 0
+			m.doNextDay()
+		case "2": // Scratch ticket
 			if m.gs.Money >= 20 {
 				m.gs.Money -= 20
 				winnings := scratchTicket()
@@ -188,9 +161,36 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.addLog(styleWarn.Render("  Can't spare $20 for a ticket."))
 				m.syncViewport()
 			}
-		case "enter", " ", "n", "4": // early night
-			m.gs.DaysWithBooze = 0
-			m.doNextDay()
+		case "3": // Six-Pack of Natty
+			if m.gs.Money >= 9 {
+				m.gs.Money -= 9
+				if m.gs.DaysWithBooze < 2 {
+					m.gs.DaysWithBooze++
+				}
+				m.addLog("")
+				m.addLogStyled(styleLogInfo, "  Crack a few on the float. Not a bad evening.")
+				m.doNextDay()
+			} else {
+				m.addLog(styleWarn.Render("  Can't even afford a six-pack of Natty. Rough week."))
+				m.syncViewport()
+			}
+		case "4": // Allen's Coffee Brandy
+			if m.gs.Money >= 12 {
+				m.gs.Money -= 12
+				m.gs.DaysWithBooze++
+				m.addLog("")
+				if m.gs.DaysWithBooze >= 3 {
+					m.gs.Hungover = true
+					m.addLogStyled(styleLogDanger, "  You close the bar down. Again.")
+					m.addLogStyled(styleLogDanger, "  Tomorrow's gonna be rough.")
+				} else {
+					m.addLogStyled(styleLogInfo, "  Few nips of Allen's. Sleep like a rock.")
+				}
+				m.doNextDay()
+			} else {
+				m.addLog(styleWarn.Render("  Not enough cash for a bottle."))
+				m.syncViewport()
+			}
 		}
 
 	case PhaseGameOver:
@@ -227,10 +227,10 @@ func (m *model) doEvening() {
 	m.addLog("")
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render("  End of day. What are you doing tonight?"))
 	m.addLog("")
-	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [1] Allen's Coffee Brandy   $12   %s", styleDim("Cut loose with some trailer juice!"))))
-	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [2] Six-Pack of Natty       $9    %s", styleDim("A couple of natty's won't hurt ya none!"))))
-	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [3] Scratch Ticket          $20   %s", styleDim("Probably a loser. Probably."))))
-	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [4] Early night             free  %s", styleDim("Up before dawn. Full day tomorrow."))))
+	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [1] Early night             free  %s", styleDim("Up before dawn. Full day tomorrow."))))
+	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [2] Scratch Ticket          $20   %s", styleDim("Probably a loser. Probably."))))
+	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [3] Six-Pack of Natty       $9    %s", styleDim("A couple of natty's won't hurt ya none!"))))
+	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [4] Allen's Coffee Brandy   $12   %s", styleDim("Cut loose with some trailer juice!"))))
 	m.addLog("")
 	m.addLog(fmt.Sprintf("  Cash: %s", moneyStr(m.gs.Money)))
 	m.syncViewport()
