@@ -1218,12 +1218,21 @@ func (m *model) doBuy() {
 			}
 			m.gs.Money -= float64(bm.Cost)
 			m.gs.BoatName = name
-			if m.gs.Traps > bm.MaxTraps {
-				m.gs.Traps = bm.MaxTraps
-			}
+
+			// New vessel — reset equipment, start with 50% trap cap, fresh health
+			m.gs.Traps = bm.MaxTraps / 2
 			m.gs.Fuel = min(m.gs.Fuel, bm.FuelCap)
 			m.gs.Bait = min(m.gs.Bait, bm.BaitCap)
-			m.confirmBuy = fmt.Sprintf("She's yours. Welcome aboard the %s.", name)
+			m.gs.Engine = 100.0
+			m.gs.Zincs = 100.0
+			m.gs.Hydraulics = 100.0
+			m.gs.HasRadar = false
+			m.gs.HasGPS = false
+			m.gs.HasVHF = false
+			m.gs.HasUpgHauler = false
+			m.gs.HasDepthSound = false
+			m.gs.HasExhaustHX = false
+			m.confirmBuy = fmt.Sprintf("She's yours. Welcome aboard the %s. Gear up at the Wharf.", name)
 		}})
 	}
 
