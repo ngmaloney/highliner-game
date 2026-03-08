@@ -1860,8 +1860,8 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasVHF { return "owned" }
 			return "$500"
 		}(), func() string {
-			if m.gs.HasVHF { return "✓ weather forecast + distress events" }
-			return "weather forecast + distress events"
+			if m.gs.HasVHF { return "✓ distress events + free tow chance" }
+			return "distress events + free tow from Dirty Ernie"
 		}()},
 		{"Upgraded Hauler", func() string {
 			if m.gs.HasUpgHauler { return "owned" }
