@@ -327,6 +327,7 @@ type GameState struct {
 	HasVHF        bool `json:"has_vhf"`         // weather forecast + distress events
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // +15% yield, slower hydraulic wear
 	HasDavit      bool `json:"has_davit"`        // +15% yield — swings pots aboard faster
+	HasLiveWell   bool `json:"has_live_well"`    // +10% sale price — lobsters arrive alive and lively
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 	HasDeckLights bool `json:"has_deck_lights"` // early departure, +10% catch
@@ -532,6 +533,12 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	// Use today's rolled prices (set at morning by RollDailyPrices)
 	basePrices := gs.DailyPrices
+	// Live well keeps lobsters alive and lively — co-op pays a premium
+	if gs.HasLiveWell {
+		for i := range basePrices {
+			basePrices[i] *= 1.10
+		}
+	}
 	gradeNames := [7]string{"Chix", "Quarters", "Halves", "Selects", "Deuces", "Jumbos", "Culls"}
 	dist := gradeDistribution(zone)
 

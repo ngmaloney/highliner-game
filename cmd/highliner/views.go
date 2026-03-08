@@ -399,6 +399,21 @@ func (m model) viewMarketContent() string {
 			}
 			return "spreader + work lights — leave port an hour early (+10% catch)"
 		}()},
+		{"Live Well", func() string {
+			if m.gs.HasLiveWell {
+				return "owned"
+			}
+			boat := BoatModels[m.gs.BoatName]
+			if boat.Length < 34 {
+				return styleWarn.Render("34ft+ only")
+			}
+			return "$2,750"
+		}(), func() string {
+			if m.gs.HasLiveWell {
+				return "✓ lobsters arrive lively — co-op pays 10% more"
+			}
+			return "+10% sale price — aerated tank keeps catch alive on longer trips"
+		}()},
 	}
 
 	permitItems := []wharfItem{
