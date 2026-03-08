@@ -410,13 +410,13 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 		addQ("")
 		addQS(styleLogInfo, "  BYCATCH")
 		if result.JonahCrabLbs > 0 {
-			price := 0.75
+			price := 0.90
 			gross := result.JonahCrabLbs * price
 			bycatchTotal += gross
 			addQ(fmt.Sprintf("    %-14s %5.1f lbs  @ $%.2f/lb  = %s", "Jonah Crab", result.JonahCrabLbs, price, moneyStr(gross)))
 		}
 		if result.RockCrabLbs > 0 {
-			price := 0.35
+			price := 0.50
 			gross := result.RockCrabLbs * price
 			bycatchTotal += gross
 			addQ(fmt.Sprintf("    %-14s %5.1f lbs  @ $%.2f/lb  = %s", "Rock Crab", result.RockCrabLbs, price, moneyStr(gross)))
@@ -440,7 +440,7 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 		addQ(styleDim("  THROWN BACK (no permit)"))
 		if result.ThrownCrabLbs > 0 {
 			missed := result.ThrownCrabLbs * 0.75
-			addQ(styleDim(fmt.Sprintf("    %-14s %5.1f lbs  ~$0.75/lb  = %s — crab permit req.", "Jonah/Rock Crab", result.ThrownCrabLbs, moneyStr(missed))))
+			addQ(styleDim(fmt.Sprintf("    %-14s %5.1f lbs  ~$0.90/lb  = %s — crab permit req.", "Jonah/Rock Crab", result.ThrownCrabLbs, moneyStr(missed))))
 		}
 		if result.ThrownGroundfishLbs > 0 {
 			price := groundfishPrice(result.ThrownGroundfishName)
@@ -564,9 +564,11 @@ func (m *model) doHaul() {
 	}
 	// Bycatch log lines
 	if result.JonahCrabLbs > 0 {
-		m.queueLog(fmt.Sprintf("1050 — Jonah crabs in the traps. Keeping %.0f lbs.", result.JonahCrabLbs))
-	} else if !m.gs.HasCrabPermit && rand.Float64() < 0.25 {
-		m.queueLog("1050 — Pulled some Jonah crabs. No crab permit — back they go.")
+		m.queueLog(fmt.Sprintf("1050 — Jonah crabs loaded in the traps. Keeping %.0f lbs.", result.JonahCrabLbs))
+	} else if result.RockCrabLbs > 0 {
+		m.queueLog(fmt.Sprintf("1050 — Rock crabs in the traps. Keeping %.0f lbs.", result.RockCrabLbs))
+	} else if !m.gs.HasCrabPermit && rand.Float64() < 0.40 {
+		m.queueLog("1050 — Crabs loaded in traps. No permit — back they go.")
 	}
 	if result.GroundfishLbs > 0 {
 		m.queueLogStyled(styleLogGreen, fmt.Sprintf("1055 — %s in the trap! %.0f lbs. Keeping it.", result.GroundfishName, result.GroundfishLbs))

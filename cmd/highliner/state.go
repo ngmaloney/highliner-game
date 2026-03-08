@@ -574,13 +574,14 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	traps := float64(gs.Traps)
 
-	// Always roll crab encounter — split into kept vs thrown back
+	// Always roll crab encounter — realistic Maine bycatch rates
+	// Jonah: 10–14 lbs/trap when present (~60% of hauls); Rock: 6–15 lbs/trap (~40%)
 	var rolledJonahLbs, rolledRockLbs float64
-	if rand.Float64() < 0.50 {
-		rolledJonahLbs = traps * (0.03 + rand.Float64()*0.05)
+	if rand.Float64() < 0.60 {
+		rolledJonahLbs = traps * (10.0 + rand.Float64()*4.0)
 	}
-	if rand.Float64() < 0.25 {
-		rolledRockLbs = traps * (0.01 + rand.Float64()*0.02)
+	if rand.Float64() < 0.40 {
+		rolledRockLbs = traps * (6.0 + rand.Float64()*9.0)
 	}
 	if gs.HasCrabPermit {
 		jonahLbs = rolledJonahLbs
