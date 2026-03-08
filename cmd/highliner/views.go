@@ -690,11 +690,11 @@ func (m *model) zoneBlockReason(zoneIdx int) string {
 	if m.weather.Type == WeatherFog && !m.gs.HasRadar && zoneIdx > 0 {
 		return "✗ fog — no radar"
 	}
+	if boat.MaxSteamHrs > 0 && Zones[zoneIdx].SteamHours > boat.MaxSteamHrs {
+		return "✗ vessel range limit — need bigger boat"
+	}
 	if !m.gs.HasGPS && Zones[zoneIdx].SteamHours > 8.0 {
 		return "✗ need GPS/chartplotter"
-	}
-	if boat.MaxSteamHrs > 0 && Zones[zoneIdx].SteamHours > boat.MaxSteamHrs {
-		return "✗ too far offshore for this vessel"
 	}
 	return ""
 }
