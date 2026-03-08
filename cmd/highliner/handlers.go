@@ -1085,16 +1085,16 @@ func (m *model) doBuy() {
 			m.gs.HasExhaustHX = true
 			m.confirmBuy = "Heat exchanger installed. Engine'll run cooler and last longer."
 		}},
-		{"Crab Permit", 500, func() {
+		{"Crab Permit", 1500, func() {
 			if m.gs.HasCrabPermit {
 				m.confirmBuy = "Already licensed."
 				return
 			}
-			if m.gs.Money < 500 {
-				m.confirmBuy = fmt.Sprintf("Need $500 — short by %s", moneyStr(500-m.gs.Money))
+			if m.gs.Money < 1500 {
+				m.confirmBuy = fmt.Sprintf("Need $1,500 — short by %s", moneyStr(1500-m.gs.Money))
 				return
 			}
-			m.gs.Money -= 500
+			m.gs.Money -= 1500
 			m.gs.HasCrabPermit = true
 			m.confirmBuy = "Crab permit issued. Jonah and rock crabs are yours to keep."
 		}},

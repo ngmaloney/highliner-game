@@ -401,7 +401,7 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasCrabPermit {
 				return "licensed"
 			}
-			return "$500"
+			return "$1,500"
 		}(), func() string {
 			if m.gs.HasCrabPermit {
 				return "✓ keep Jonah + rock crab"

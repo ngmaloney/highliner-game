@@ -574,14 +574,20 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	traps := float64(gs.Traps)
 
-	// Always roll crab encounter — realistic Maine bycatch rates
-	// Jonah: 10–14 lbs/trap when present (~60% of hauls); Rock: 6–15 lbs/trap (~40%)
+	// Crab bycatch — presence and weight vary by zone depth
+	// Nearshore (A/B): fewer crabs, shallower mud; deeper (C+): rocky bottom, heavier crab load
+	crabFactor := 0.5 + (zone.SteamHours/10.0)*0.8 // 0.5x nearshore → 1.3x offshore
+	jonahChance := math.Min(0.70, 0.30*crabFactor)
+	rockChance  := math.Min(0.50, 0.18*crabFactor)
+
 	var rolledJonahLbs, rolledRockLbs float64
-	if rand.Float64() < 0.60 {
-		rolledJonahLbs = traps * (10.0 + rand.Float64()*4.0)
+	if rand.Float64() < jonahChance {
+		// 2–7 lbs/trap on an average day; good days push higher
+		rolledJonahLbs = traps * (2.0 + rand.Float64()*5.0) * crabFactor
 	}
-	if rand.Float64() < 0.40 {
-		rolledRockLbs = traps * (6.0 + rand.Float64()*9.0)
+	if rand.Float64() < rockChance {
+		// 1–5 lbs/trap; rock crabs less common than Jonah
+		rolledRockLbs = traps * (1.0 + rand.Float64()*4.0) * crabFactor
 	}
 	if gs.HasCrabPermit {
 		jonahLbs = rolledJonahLbs
