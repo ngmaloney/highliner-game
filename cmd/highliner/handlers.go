@@ -567,6 +567,31 @@ func (m *model) doHaul() {
 		}
 	}
 
+	// Pot thief — zone-based chance; crowded nearshore zones get higher odds
+	// Zone A/B: 6%; C/D: 3%; E+: 1%
+	if m.gs.Traps > 1 {
+		potThiefChance := 0.01
+		switch zone.ID {
+		case "A", "B":
+			potThiefChance = 0.06
+		case "C", "D":
+			potThiefChance = 0.03
+		}
+		if rand.Float64() < potThiefChance {
+			m.gs.Traps--
+			trapCost := BoatModels[m.gs.BoatName].TrapCost
+			flavors := []string{
+				"Buoy's gone too. Clipped clean.",
+				"Warp cut right at the eye. That wasn't an accident.",
+				"Asked around the dock. Nobody saw nothin'.",
+				"Probably that guy with the green truck. Can't prove it.",
+			}
+			flavor := flavors[rand.Intn(len(flavors))]
+			m.queueLogStyled(styleLogDanger, "1100 — Some friggin dubbah must of stole your pot!")
+			m.queueLogStyled(styleLogDanger, fmt.Sprintf("       %s ($%.0f to replace)", flavor, trapCost))
+		}
+	}
+
 	// Build post-event queue
 	m.postEventLines = nil
 
