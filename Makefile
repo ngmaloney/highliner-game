@@ -1,7 +1,7 @@
 BINARY := highliner
 CMD    := ./cmd/highliner
 
-.PHONY: run build clean
+.PHONY: run build clean release-dry
 
 run:
 	go run $(CMD)
@@ -11,3 +11,7 @@ build:
 
 clean:
 	rm -f $(BINARY)
+
+# Test release build locally (requires goreleaser)
+release-dry:
+	goreleaser release --snapshot --clean
