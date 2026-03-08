@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 23 {
+			if m.marketCursor < 24 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}

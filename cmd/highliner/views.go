@@ -267,14 +267,16 @@ func (m model) viewMarketContent() string {
 	supplyItems := []wharfItem{
 		{"Bait — one trip", func() string {
 			tripLbs := int(float64(m.gs.Traps)*2.5+0.5)
-			need := max(0, tripLbs-m.gs.Bait)
+			target := min(tripLbs, m.gs.EffectiveBaitCap())
+			need := max(0, target-m.gs.Bait)
 			if need <= 0 {
 				return "stocked"
 			}
 			return fmt.Sprintf("$%.0f", float64(need)*m.gs.BaitPrice)
 		}(), func() string {
 			tripLbs := int(float64(m.gs.Traps)*2.5+0.5)
-			need := max(0, tripLbs-m.gs.Bait)
+			target := min(tripLbs, m.gs.EffectiveBaitCap())
+			need := max(0, target-m.gs.Bait)
 			if need <= 0 {
 				return fmt.Sprintf("already have enough for today (%d traps)", m.gs.Traps)
 			}
@@ -773,12 +775,12 @@ func (m *model) syncAltViewport() {
 	case ScreenMarket:
 		content = m.viewMarketContent()
 		m.altVP.SetContent(content)
-		// Scroll viewport to follow cursor — each item ~1 line, section headers ~3 lines
-		// Sections: CREW(2), SUPPLIES(4), REPAIRS(3), EQUIPMENT(8), PERMITS(2), VESSELS(5)
-		sectionOffsets := []int{0, 0, 5, 5, 5, 5, 12, 12, 12, 19, 19, 19, 19, 19, 19, 19, 19, 19, 30, 30, 36, 36, 36, 36}
+		// Exact cursor→line mapping (1 line per subHeader, 1 per item, 1 per \n gap):
+		// CREW(0), SUPPLIES(4), REPAIRS(10), EQUIPMENT(15), PERMITS(26), BOATS(30)
+		cursorLines := []int{1, 2, 5, 6, 7, 8, 11, 12, 13, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27, 28, 31, 32, 33, 34, 35}
 		line := 0
-		if m.marketCursor < len(sectionOffsets) {
-			line = sectionOffsets[m.marketCursor] + m.marketCursor
+		if m.marketCursor < len(cursorLines) {
+			line = cursorLines[m.marketCursor]
 		}
 		m.altVP.SetYOffset(max(0, line-m.altVP.Height/2))
 		return
