@@ -509,10 +509,32 @@ func (m model) viewMarketContent() string {
 		}()},
 	}
 
+	fleetOrder := []string{"Crowley Beal 28", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
+	currentBoat := BoatModels[m.gs.BoatName]
+	var vesselItems []wharfItem
+	for _, name := range fleetOrder {
+		bm := BoatModels[name]
+		n := name // capture
+		_ = n
+		var costStr, descStr string
+		if bm.Length <= currentBoat.Length {
+			costStr = styleDim("owned")
+			descStr = styleDim("current vessel or smaller")
+		} else if m.gs.Money < float64(bm.Cost) {
+			costStr = styleDanger.Render(moneyStr(float64(bm.Cost)))
+			descStr = styleDim(fmt.Sprintf("need %s more", moneyStr(float64(bm.Cost)-m.gs.Money)))
+		} else {
+			costStr = styleValue.Render(moneyStr(float64(bm.Cost)))
+			descStr = fmt.Sprintf("%d traps  %d ft", bm.MaxTraps, bm.Length)
+		}
+		vesselItems = append(vesselItems, wharfItem{name, costStr, descStr})
+	}
+
 	allItems := append(crewItems, supplyItems...)
 	allItems = append(allItems, repairItems...)
 	allItems = append(allItems, equipItems...)
 	allItems = append(allItems, permitItems...)
+	allItems = append(allItems, vesselItems...)
 
 	renderItems := func(items []wharfItem, offset int) {
 		for i, item := range items {
@@ -546,45 +568,12 @@ func (m model) viewMarketContent() string {
 	b.WriteString("\n")
 	b.WriteString(subHeader("PERMITS", m.width))
 	renderItems(permitItems, len(crewItems)+len(supplyItems)+len(repairItems)+len(equipItems))
+	b.WriteString("\n")
+	b.WriteString(subHeader("BOAT UPGRADES", m.width))
+	renderItems(vesselItems, len(crewItems)+len(supplyItems)+len(repairItems)+len(equipItems)+len(permitItems))
 
 	b.WriteString("\n")
 	b.WriteString(styleKey.Render("  [↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs"))
-
-	b.WriteString("\n\n")
-	b.WriteString(subHeader("BOAT UPGRADES", m.width))
-	fleetOrder := []string{"Crowley Beal 28", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
-	// boat upgrade items start at index 13 (after 4 supply, 3 repair, 6 equip, 2 permit)
-	boatBaseIdx := len(crewItems) + len(supplyItems) + len(repairItems) + len(equipItems) + len(permitItems)
-	currentBoat := BoatModels[m.gs.BoatName]
-	for i, name := range fleetOrder {
-		bm := BoatModels[name]
-		idx := boatBaseIdx + i
-		cursor := "  "
-		if m.marketCursor == idx {
-			cursor = styleSelected.Render("►")
-			cursor += " "
-		} else {
-			cursor = "  "
-		}
-
-		var costStr, descStr string
-		if bm.Length <= currentBoat.Length {
-			costStr = styleDim("owned")
-			descStr = styleDim("current vessel or smaller")
-		} else if m.gs.Money < float64(bm.Cost) {
-			costStr = styleDanger.Render(moneyStr(float64(bm.Cost)))
-			descStr = styleDim(fmt.Sprintf("need %s more", moneyStr(float64(bm.Cost)-m.gs.Money)))
-		} else {
-			costStr = styleValue.Render(moneyStr(float64(bm.Cost)))
-			descStr = fmt.Sprintf("%d traps  %d ft", bm.MaxTraps, bm.Length)
-		}
-
-		b.WriteString(fmt.Sprintf("%s%-22s  %-12s  %s\n",
-			cursor,
-			name,
-			costStr,
-			descStr))
-	}
 
 	return b.String()
 }
