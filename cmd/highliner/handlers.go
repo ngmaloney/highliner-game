@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 19 {
+			if m.marketCursor < 20 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1292,6 +1292,19 @@ func (m *model) doBuy() {
 			m.gs.HasExhaustHX = true
 			m.confirmBuy = "Heat exchanger installed. Engine'll run cooler and last longer."
 		}},
+		{"Deck Lights", 1500, func() {
+			if m.gs.HasDeckLights {
+				m.confirmBuy = "Already installed."
+				return
+			}
+			if m.gs.Money < 1500 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1500), moneyStr(1500-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 1500
+			m.gs.HasDeckLights = true
+			m.confirmBuy = "Spreader lights installed. You're leaving the dock at 0500 from now on."
+		}},
 		{"Crab Permit", 1500, func() {
 			if m.gs.HasCrabPermit {
 				m.confirmBuy = "Already licensed."
@@ -1360,6 +1373,7 @@ func (m *model) doBuy() {
 			m.gs.HasUpgHauler = false
 			m.gs.HasDepthSound = false
 			m.gs.HasExhaustHX = false
+			m.gs.HasDeckLights = false
 			m.confirmBuy = fmt.Sprintf("She's yours. Welcome aboard the %s. Gear up at the Wharf.", name)
 		}})
 	}

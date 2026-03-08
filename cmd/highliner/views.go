@@ -377,6 +377,17 @@ func (m model) viewMarketContent() string {
 			}
 			return "reduces engine wear per haul"
 		}()},
+		{"Deck Lights", func() string {
+			if m.gs.HasDeckLights {
+				return "owned"
+			}
+			return "$1,500"
+		}(), func() string {
+			if m.gs.HasDeckLights {
+				return "✓ out at 0500 — extra hour on the water (+10% catch)"
+			}
+			return "spreader + work lights — leave port an hour early (+10% catch)"
+		}()},
 	}
 
 	permitItems := []wharfItem{

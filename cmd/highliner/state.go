@@ -327,6 +327,7 @@ type GameState struct {
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // slower hydraulic wear
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
+	HasDeckLights bool `json:"has_deck_lights"` // early departure, +10% catch
 
 	// Licenses
 	HasCrabPermit       bool `json:"has_crab_permit"`       // keep/sell Jonah + rock crab
@@ -638,6 +639,11 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	crabPerTrap := (rolledJonahLbs + rolledRockLbs) / math.Max(1, traps)
 	crowding := math.Max(0.5, 1.0-(crabPerTrap/trapCapacityLbs)*0.8)
 	catchLbs *= crowding
+
+	// Deck lights — early departure, extra traps pulled in the dark hour
+	if gs.HasDeckLights {
+		catchLbs *= 1.10
+	}
 
 	// Sternman boost
 	var sternmanMishap bool
