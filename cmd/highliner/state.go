@@ -1014,6 +1014,12 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Ricky Gray told his wife if he has one more week like last week she's getting a new kitchen. His wife said she'd rather have a new sled. Woman knows what matters.",
 		"Heard Daryl Sprague got pinched upta camp last weekend. Warden caught him with a doe and no tag. Rifle, freezer bags, the whole operation. IF&W don't play.",
 		"Gary Hutchins thought he was slick — bagged some camp meat two weeks before season. Game warden was parked at the end of the road the whole time. Lost his license, his rifle, and his dignity. In that order.",
+		"Asked Clyde how Zone C's been fishing lately. 'Hard tellin', not knowin',' he says. Helpful as always.",
+		"Someone asked Donnie Beal if the price was gonna hold through October. 'Hard tellin', not knowin'.' Man's been fishing 40 years and that's his answer for everything.",
+		"New guy on the dock rigged his own traps first season. Knots were something else. Ain't you cunning, kid.",
+		"Warden come by checking licenses last Tuesday. Looked at Earl Coombs's setup and said 'nice rig.' Earl said 'finest kind.' Warden didn't know what that meant but he left anyway.",
+		"Haul's been some good this week if the weather holds. Hard tellin' after that.",
+		"Heard the co-op's getting a new scale. About time. Current one's been reading light all summer. Hard tellin' how much that's cost us.",
 	}
 
 	var lines []string
