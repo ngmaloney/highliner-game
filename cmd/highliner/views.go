@@ -37,6 +37,7 @@ func (m model) View() string {
 		{"[2/M] MAINT", ScreenMaintenance},
 		{"[3/D] DOCK", ScreenDock},
 		{"[4/W] WHARF", ScreenMarket},
+		{"[5/C] CHART", ScreenChart},
 	}
 	for _, t := range tabs {
 		if t.screen == m.screen {
@@ -96,7 +97,7 @@ func (m model) View() string {
 	switch m.screen {
 	case ScreenLog:
 		b.WriteString(m.viewport.View())
-	case ScreenMaintenance, ScreenDock, ScreenMarket:
+	case ScreenMaintenance, ScreenDock, ScreenMarket, ScreenChart:
 		b.WriteString(m.altVP.View())
 	}
 
@@ -510,6 +511,118 @@ func (m model) viewMaintenance() string { return m.viewMaintenanceContent() }
 func (m model) viewDock() string        { return m.viewDockContent() }
 func (m model) viewMarket() string      { return m.viewMarketContent() }
 
+func (m model) viewChartContent() string {
+	var b strings.Builder
+	boat := BoatModels[m.gs.BoatName]
+
+	b.WriteString(subHeader("FISHING GROUNDS — EASTERN MAINE COASTAL WATERS", m.width))
+	b.WriteString("\n")
+
+	// ASCII depth/distance map
+	// Zones arranged shore→offshore left to right
+	b.WriteString(styleDim("  ◄── SHORE") + strings.Repeat(" ", 52) + styleDim("DEEP SEA ──►\n"))
+	b.WriteString("\n")
+
+	// Zone markers row
+	b.WriteString("  ")
+	spacing := []int{0, 8, 8, 8, 8, 8, 8}
+	for i, z := range Zones {
+		if i > 0 {
+			b.WriteString(strings.Repeat("~", spacing[i]-2))
+		}
+		zoneStyle := lipgloss.NewStyle().Foreground(colorBrightWhite).Bold(true)
+		if m.gs.HotCrabZone == z.ID {
+			zoneStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Bold(true)
+		}
+		blocked := m.zoneBlocked(i)
+		if blocked {
+			zoneStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+		}
+		b.WriteString(zoneStyle.Render("[" + z.ID + "]"))
+	}
+	b.WriteString("\n")
+
+	// Depth line
+	b.WriteString("  ")
+	depths := []string{"─────", "──────", "──────", "───────", "────────", "──────────", "────────────"}
+	for _, d := range depths {
+		b.WriteString(d)
+	}
+	b.WriteString("\n")
+
+	// Seabed texture
+	textures := []string{
+		"  Sandy   Mud     Rocky   Shoals  Ledge   Mixed   Deep",
+	}
+	b.WriteString(styleDim(textures[0]) + "\n")
+	b.WriteString("\n")
+
+	// Legend
+	if m.gs.HotCrabZone != "" {
+		b.WriteString(fmt.Sprintf("  %s  Zone %s running heavy crab today\n",
+			lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Render("🦀"),
+			m.gs.HotCrabZone))
+		b.WriteString("\n")
+	}
+
+	// Stats table
+	b.WriteString(subHeader("ZONE DETAILS", m.width))
+	b.WriteString("\n")
+
+	// Header
+	b.WriteString(styleLogInfo.Render(fmt.Sprintf("  %-2s  %-22s  %5s  %6s  %5s  %-9s  %s\n",
+		"Z", "Name", "Steam", "Fuel", "Yield", "Crab", "Notes")))
+	b.WriteString("  " + styleDim(strings.Repeat("─", 75)) + "\n")
+
+	for i, z := range Zones {
+		fuelBurn := z.SteamHours * boat.FuelBurnRate
+		catchMult := z.Multiplier * 100
+
+		// Crab indicator
+		crabIndicator := "low    "
+		if z.SteamHours >= 6.0 {
+			crabIndicator = "high   "
+		} else if z.SteamHours >= 4.0 {
+			crabIndicator = "med    "
+		}
+		if m.gs.HotCrabZone == z.ID {
+			crabIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Render("🦀 hot  ")
+		}
+
+		// Access notes
+		notes := ""
+		if m.zoneBlocked(i) {
+			notes = styleDanger.Render(m.zoneBlockReason(i))
+		} else if z.ID == "F" || z.ID == "G" {
+			notes = styleDim("far offshore")
+		} else if z.ID == "E" {
+			notes = styleDim("long steam")
+		}
+
+		isBlocked := m.zoneBlocked(i)
+		rowColor := colorBrightWhite
+		if isBlocked {
+			rowColor = lipgloss.Color("#555555")
+		}
+		rs := lipgloss.NewStyle().Foreground(rowColor)
+
+		// Build each column as plain text first, then style — avoids ANSI width drift in Sprintf
+		zoneCol  := rs.Render(fmt.Sprintf("%-2s", z.ID))
+		nameCol  := rs.Render(fmt.Sprintf("%-22s", z.Name))
+		statsCol := fmt.Sprintf("%3.1fh  %5.1fgl  %4.0f%%", z.SteamHours, fuelBurn, catchMult)
+
+		b.WriteString(fmt.Sprintf("  %s  %s  %s  %s%s\n",
+			zoneCol, nameCol, statsCol, crabIndicator, notes))
+	}
+
+	b.WriteString("\n")
+	b.WriteString(styleDim(fmt.Sprintf("  Fuel burn based on current vessel: %s (%.1f gal/hr)\n", m.gs.BoatName, boat.FuelBurnRate)))
+	b.WriteString(styleDim(fmt.Sprintf("  Tank: %d/%d gal   Range at full tank: %.1f hrs steam\n",
+		m.gs.Fuel, boat.FuelCap, float64(m.gs.Fuel)/boat.FuelBurnRate)))
+
+	return b.String()
+}
+
 // syncViewport updates the main log viewport
 func (m *model) syncViewport() {
 	content := strings.Join(m.logLines, "\n")
@@ -527,6 +640,8 @@ func (m *model) syncAltViewport() {
 		content = m.viewDockContent()
 	case ScreenMarket:
 		content = m.viewMarketContent()
+	case ScreenChart:
+		content = m.viewChartContent()
 	}
 	m.altVP.SetContent(content)
 }

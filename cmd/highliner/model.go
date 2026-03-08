@@ -18,6 +18,7 @@ const (
 	ScreenMaintenance
 	ScreenDock
 	ScreenMarket
+	ScreenChart
 )
 
 // ─── Event Types ─────────────────────────────────────────────────────────────
@@ -214,6 +215,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.syncAltViewport()
 			} else {
 				return m.handlePhaseKey(msg.String())
+			}
+		case "5", "c":
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
+				m.screen = ScreenChart
+				m.syncAltViewport()
 			}
 
 		default:
