@@ -216,7 +216,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				return m.handlePhaseKey(msg.String())
 			}
-		case "5", "c":
+		case "5", "g":
 			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenChart
 				m.syncAltViewport()

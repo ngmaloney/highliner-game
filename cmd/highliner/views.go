@@ -38,7 +38,7 @@ func (m model) View() string {
 		{"[2/M] MAINT", ScreenMaintenance},
 		{"[3/D] DOCK", ScreenDock},
 		{"[4/W] WHARF", ScreenMarket},
-		{"[5/C] CHART", ScreenChart},
+		{"[5/G] GROUNDS", ScreenChart},
 	}
 	for _, t := range tabs {
 		if t.screen == m.screen {
