@@ -1007,6 +1007,11 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Bobby Torrey got his moose permit. Taking two weeks off. Said it like he won the lottery. Might as well have.",
 		"Kenny Leighton drew a moose permit third year in a row. Man puts in for every zone. Rest of us haven't seen a tag in ten years. Life ain't fair.",
 		"Heard Wayne Alley's taking the week off — finally drew his moose permit after twelve years. Boat's just sitting at the mooring. Can't blame him.",
+		"Shawn Conary says if this season holds he's getting two new sleds. Said the same thing last year. And the year before. Sleds are still '09s.",
+		"Dale Eaton's been talking all summer about getting a new Polaris side-by-side for upta camp this fall. Dale also owes me forty bucks. I'll believe it when I see it.",
+		"Terry Beal had three good weeks in a row and already bought a new sled. Didn't fix his hauler, didn't pay down his trap loan — bought a sled. That's lobstering.",
+		"If the crab holds through September, Phil Robbins says he's finally getting that new camp upta Parlin Pond. Phil's been saying that since 2014.",
+		"Ricky Gray told his wife if he has one more week like last week she's getting a new kitchen. His wife said she'd rather have a new sled. Woman knows what matters.",
 	}
 
 	var lines []string
