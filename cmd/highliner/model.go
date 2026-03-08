@@ -582,8 +582,8 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.syncViewport()
 			}
 		case "3": // Scratch ticket
-			if m.gs.Money >= 5 {
-				m.gs.Money -= 5
+			if m.gs.Money >= 20 {
+				m.gs.Money -= 20
 				winnings := scratchTicket()
 				m.addLog("")
 				if winnings == 0 {
@@ -591,13 +591,16 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				} else if winnings >= 500 {
 					m.gs.Money += float64(winnings)
 					m.addLogStyled(styleLogGreen, fmt.Sprintf("  🎰 JACKPOT! Scratch ticket pays $%d!", winnings))
+				} else if winnings == 20 {
+					m.addLogStyled(styleLogGreen, "  Scratch ticket: break-even. At least you didn't lose.")
+					m.gs.Money += float64(winnings)
 				} else {
 					m.gs.Money += float64(winnings)
 					m.addLogStyled(styleLogGreen, fmt.Sprintf("  Scratch ticket winner: +$%d", winnings))
 				}
 				m.doNextDay()
 			} else {
-				m.addLog(styleWarn.Render("  Can't spare $5 for a ticket."))
+				m.addLog(styleWarn.Render("  Can't spare $20 for a ticket."))
 				m.syncViewport()
 			}
 		case "enter", " ", "n", "4": // early night
@@ -618,11 +621,13 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 func scratchTicket() int {
 	r := rand.Float64()
 	switch {
-	case r < 0.001: return 500  // 0.1% jackpot
-	case r < 0.021: return 100  // 2%
-	case r < 0.101: return 25   // 8%
-	case r < 0.351: return 10   // 25%
-	default:        return 0    // 65% loser
+	case r < 0.001:  return 500  // 1 in 1000 — rare
+	case r < 0.005:  return 200  // 1 in 250 — hard to find
+	case r < 0.022:  return 100  // 1 in 59 — uncommon
+	case r < 0.055:  return 50   // 1 in 30 — regular
+	case r < 0.122:  return 40   // 1 in 15 — common
+	case r < 0.322:  return 20   // 1 in 5 — break-even
+	default:         return 0    // ~68% loser
 	}
 }
 
@@ -634,7 +639,7 @@ func (m *model) doEvening() {
 	m.addLog("")
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [1] Allen's Coffee Brandy   $12   %s", styleDim("Cut loose with some trailer juice!"))))
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [2] Six-Pack of Natty       $9    %s", styleDim("A couple of natty's won't hurt ya none!"))))
-	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [3] Scratch Ticket          $5    %s", styleDim("Probably a loser. Probably."))))
+	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [3] Scratch Ticket          $20   %s", styleDim("Probably a loser. Probably."))))
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [4] Early night             free  %s", styleDim("Up before dawn. Full day tomorrow."))))
 	m.addLog("")
 	m.addLog(fmt.Sprintf("  Cash: %s", moneyStr(m.gs.Money)))
