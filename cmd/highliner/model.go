@@ -834,6 +834,21 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 		}
 		totalGross += bycatchTotal
 	}
+
+	// Thrown-back bycatch — show missed revenue to incentivize permits
+	if result.ThrownCrabLbs > 0 || result.ThrownGroundfishLbs > 0 {
+		addQ("")
+		addQ(styleDim("  THROWN BACK (no permit)"))
+		if result.ThrownCrabLbs > 0 {
+			missed := result.ThrownCrabLbs * 0.75
+			addQ(styleDim(fmt.Sprintf("    %-14s %5.1f lbs  ~$0.75/lb  = %s — crab permit req.", "Jonah/Rock Crab", result.ThrownCrabLbs, moneyStr(missed))))
+		}
+		if result.ThrownGroundfishLbs > 0 {
+			price := groundfishPrice(result.ThrownGroundfishName)
+			missed := result.ThrownGroundfishLbs * price
+			addQ(styleDim(fmt.Sprintf("    %-14s %5.1f lbs  ~$%.2f/lb  = %s — groundfish permit req.", result.ThrownGroundfishName, result.ThrownGroundfishLbs, price, moneyStr(missed))))
+		}
+	}
 	addQ("")
 
 	fuelCost := float64(result.FuelUsed) * m.gs.DieselPrice

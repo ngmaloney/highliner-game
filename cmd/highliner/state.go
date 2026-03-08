@@ -395,11 +395,15 @@ type HaulResult struct {
 	HydraulicsDmg float64
 	HullDmg       float64
 	TrapsLost     int
-	// Bycatch
-	JonahCrabLbs    float64
-	RockCrabLbs     float64
-	GroundfishName  string
-	GroundfishLbs   float64
+	// Bycatch (kept, with permit)
+	JonahCrabLbs   float64
+	RockCrabLbs    float64
+	GroundfishName string
+	GroundfishLbs  float64
+	// Bycatch (thrown back, no permit)
+	ThrownCrabLbs        float64
+	ThrownGroundfishName string
+	ThrownGroundfishLbs  float64
 }
 
 // RollDailyPrices generates co-op dock prices for the day
@@ -560,34 +564,39 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	traps := float64(gs.Traps)
 
+	// Always roll crab encounter — split into kept vs thrown back
+	var rolledJonahLbs, rolledRockLbs float64
+	if rand.Float64() < 0.50 {
+		rolledJonahLbs = traps * (0.03 + rand.Float64()*0.05)
+	}
+	if rand.Float64() < 0.25 {
+		rolledRockLbs = traps * (0.01 + rand.Float64()*0.02)
+	}
 	if gs.HasCrabPermit {
-		// Jonah crabs: ~0.03–0.08 lbs per trap, 50% hauls
-		if rand.Float64() < 0.50 {
-			jonahLbs = traps * (0.03 + rand.Float64()*0.05)
-		}
-		// Rock crabs: ~0.01–0.03 lbs per trap, 25% hauls
-		if rand.Float64() < 0.25 {
-			rockLbs = traps * (0.01 + rand.Float64()*0.02)
-		}
+		jonahLbs = rolledJonahLbs
+		rockLbs = rolledRockLbs
 	}
 
-	if gs.HasGroundfishPermit && zone.SteamHours >= 2.0 {
-		// Groundfish scales loosely with traps — more gear = more encounters
-		// Cusk/Hake: 25% chance, ~0.02–0.06 lbs/trap
+	// Always roll groundfish encounter in zones B+
+	var rolledGFName string
+	var rolledGFLbs float64
+	if zone.SteamHours >= 2.0 {
 		if rand.Float64() < 0.25 {
-			groundfishName = "Cusk/Hake"
-			groundfishLbs = traps * (0.02 + rand.Float64()*0.04)
+			rolledGFName = "Cusk/Hake"
+			rolledGFLbs = traps * (0.02 + rand.Float64()*0.04)
 		}
-		// Monkfish: 20% chance, ~0.01–0.05 lbs/trap (tail weight)
 		if rand.Float64() < 0.20 {
-			groundfishName = "Monkfish"
-			groundfishLbs = traps * (0.01 + rand.Float64()*0.04)
+			rolledGFName = "Monkfish"
+			rolledGFLbs = traps * (0.01 + rand.Float64()*0.04)
 		}
-		// Halibut: rare jackpot, 2% chance, flat 8–30 lbs (one fish)
 		if rand.Float64() < 0.02 {
-			groundfishName = "Halibut"
-			groundfishLbs = 8.0 + rand.Float64()*22.0
+			rolledGFName = "Halibut"
+			rolledGFLbs = 8.0 + rand.Float64()*22.0
 		}
+	}
+	if gs.HasGroundfishPermit {
+		groundfishName = rolledGFName
+		groundfishLbs = rolledGFLbs
 	}
 
 	return HaulResult{
@@ -601,10 +610,13 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		HydraulicsDmg: hydDmg,
 		HullDmg:       hullDmg,
 		TrapsLost:     trapsLost,
-		JonahCrabLbs:  jonahLbs,
-		RockCrabLbs:   rockLbs,
-		GroundfishName: groundfishName,
-		GroundfishLbs: groundfishLbs,
+		JonahCrabLbs:         jonahLbs,
+		RockCrabLbs:          rockLbs,
+		GroundfishName:       groundfishName,
+		GroundfishLbs:        groundfishLbs,
+		ThrownCrabLbs:        func() float64 { if !gs.HasCrabPermit { return rolledJonahLbs + rolledRockLbs }; return 0 }(),
+		ThrownGroundfishName: func() string  { if !gs.HasGroundfishPermit { return rolledGFName }; return "" }(),
+		ThrownGroundfishLbs:  func() float64 { if !gs.HasGroundfishPermit { return rolledGFLbs }; return 0 }(),
 	}
 }
 
