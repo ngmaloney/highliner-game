@@ -314,6 +314,7 @@ type GameState struct {
 	TotalRevenue float64    `json:"total_revenue"`
 	// Daily market prices by grade [chix, quarters, selects, jumbos, supers, culls]
 	DailyPrices  [6]float64 `json:"daily_prices"`
+	HotCrabZone  string     `json:"hot_crab_zone"`  // zone ID with heavy crab today, "" = none
 	DieselPrice  float64    `json:"diesel_price"`  // $/gal, marine diesel
 	BaitPrice    float64    `json:"bait_price"`    // $/lb, fresh herring spot price
 
@@ -435,6 +436,16 @@ func RollDieselPrice() float64 {
 // RollBaitPrice: fresh herring spot price $0.40–$0.80/lb
 func RollBaitPrice() float64 {
 	return math.Round((0.40+rand.Float64()*0.40)*100) / 100
+}
+
+// RollHotCrabZone returns a zone ID that's running heavy on crab today.
+// 65% chance any zone is hot; "" means no zone is particularly crabby.
+func RollHotCrabZone() string {
+	if rand.Float64() > 0.65 {
+		return ""
+	}
+	zones := []string{"A", "B", "C", "D", "E", "F", "G"}
+	return zones[rand.Intn(len(zones))]
 }
 
 // gradeDistribution returns fractions (must sum to 1.0) for
@@ -578,8 +589,11 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	// Crab bycatch — presence and weight vary by zone depth
 	// Nearshore (A/B): fewer crabs, shallower mud; deeper (C+): rocky bottom, heavier crab load
 	crabFactor := 0.5 + (zone.SteamHours/10.0)*0.8 // 0.5x nearshore → 1.3x offshore
-	jonahChance := math.Min(0.70, 0.30*crabFactor)
-	rockChance  := math.Min(0.50, 0.18*crabFactor)
+	if gs.HotCrabZone == zone.ID {
+		crabFactor *= 1.6 // hot zone: crabs running heavy today
+	}
+	jonahChance := math.Min(0.85, 0.30*crabFactor)
+	rockChance  := math.Min(0.65, 0.18*crabFactor)
 
 	var rolledJonahLbs, rolledRockLbs float64
 	if rand.Float64() < jonahChance {

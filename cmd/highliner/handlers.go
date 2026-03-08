@@ -47,11 +47,19 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 				m.addLog("Choose your fishing grounds for today:")
 				m.addLog("")
 				for i, z := range Zones {
+					crabTag := ""
+					if m.gs.HotCrabZone == z.ID {
+						if m.gs.HasCrabPermit {
+							crabTag = styleLogGreen.Render("  🦀 crabs running")
+						} else {
+							crabTag = styleLogWarn.Render("  🦀 crabby today")
+						}
+					}
 					if m.zoneBlocked(i) {
 						reason := m.zoneBlockReason(i)
 						m.addLog(styleDim(fmt.Sprintf("  [%d] %s (%s) — %s  %s", i+1, z.ID, z.Name, z.Description, reason)))
 					} else {
-						m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [%d] %s (%s) — %s", i+1, z.ID, z.Name, z.Description)))
+						m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [%d] %s (%s) — %s", i+1, z.ID, z.Name, z.Description)) + crabTag)
 					}
 				}
 				m.addLog("")
@@ -267,6 +275,7 @@ func (m *model) startMorning() {
 	m.gs.DailyPrices = RollDailyPrices()
 	m.gs.DieselPrice = RollDieselPrice()
 	m.gs.BaitPrice = RollBaitPrice()
+	m.gs.HotCrabZone = RollHotCrabZone()
 
 	// Deferred vandalism — 30% already set the flag; now resolve it
 	if m.gs.PendingVandalism {
@@ -326,6 +335,20 @@ func (m *model) startMorning() {
 		p[0], p[1], p[2], p[3], p[4], p[5]))
 	m.addLog(fmt.Sprintf("  Diesel $%.2f/gal   Herring bait $%.2f/lb",
 		m.gs.DieselPrice, m.gs.BaitPrice))
+
+	// Dock gossip about crab zones
+	if m.gs.HotCrabZone != "" {
+		gossip := []string{
+			"Someone at the co-op said Zone %s is loaded with Jonah today.",
+			"Heard on the radio — Zone %s running heavy crab this morning.",
+			"Guy at the fuel dock said his buddy pulled nothing but crab out of Zone %s yesterday.",
+			"Word around the wharf: Zone %s is crabby as hell right now.",
+			"Old timer mentioned Zone %s has been full of Jonah the last couple days.",
+		}
+		line := gossip[rand.Intn(len(gossip))]
+		m.addLog("")
+		m.addLog(styleDim(fmt.Sprintf("  "+line, m.gs.HotCrabZone)))
+	}
 	m.addLog("")
 
 	if m.gs.Money < -10000 {
