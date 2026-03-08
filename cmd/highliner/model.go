@@ -920,7 +920,7 @@ func (m *model) doHaul() {
 	if breakdownChance > 0 && rand.Float64() < breakdownChance {
 		m.queueLogStyled(styleLogDanger, "0640 — Engine quit. Dead in the water.")
 		if m.gs.HasVHF && rand.Float64() < 0.50 {
-			m.queueLogStyled(styleLogGreen, "0645 — Got on channel 16. Billy from slip 12 heard you — he'll tow you in for a six-pack.")
+			m.queueLogStyled(styleLogGreen, "0645 — Got on channel 16. Dirty Ernie heard you — he'll tow you in for a six-pack.")
 			m.queueLog("1100 — Back at the dock. No catch today.")
 			m.gs.Money -= 9 // cost of the six-pack
 		} else {
