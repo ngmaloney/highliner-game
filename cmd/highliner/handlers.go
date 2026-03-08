@@ -712,6 +712,14 @@ func (m *model) doHaul() {
 		m.queueLog(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
 		m.queueLog("1600 — Back at the dock.")
 		m.buildDebriefLines(result, &m.pendingLines)
+	} else if m.activeEvent.KeyA == "" {
+		// No-decision event — resolve immediately and continue
+		m.resolveEvent("")
+		midday(&m.pendingLines)
+		m.queueLog(fmt.Sprintf("1430 — Last trap aboard. %.0f lbs total.", result.CatchLbs))
+		m.queueLog("1600 — Back at the dock.")
+		m.buildDebriefLines(result, &m.pendingLines)
+		m.activeEvent = nil
 	} else {
 		m.queueLogStyled(styleLogWarn, m.activeEvent.Desc)
 		postAdd := func(s string) {
@@ -964,7 +972,6 @@ func (m *model) resolveEvent(key string) {
 		if key == ev.KeyA || key == ev.KeyB {
 			hasMissingPermit := false
 			var issues []string
-			// Check if they're in crab territory without permit
 			if !m.gs.HasCrabPermit && m.gs.HotCrabZone != "" {
 				hasMissingPermit = true
 				issues = append(issues, "no crab permit")
@@ -976,6 +983,96 @@ func (m *model) resolveEvent(key string) {
 			} else {
 				m.addLogStyled(styleLogGreen, "  Papers in order. They wave you off. Back to hauling.")
 			}
+		}
+
+	case EventEngineTempHigh:
+		if key == ev.KeyA {
+			// Push through — risk engine damage
+			dmg := 8.0 + rand.Float64()*22.0
+			m.gs.Engine = math.Max(0, m.gs.Engine-dmg)
+			if dmg > 20 {
+				m.addLogStyled(styleLogDanger, fmt.Sprintf("  Made it through. Engine took a hit — down %.0f%%. Get it looked at.", dmg))
+			} else {
+				m.addLogStyled(styleLogWarn, fmt.Sprintf("  Finished the string. Engine down %.0f%%. Probably just the thermostat.", dmg))
+			}
+		} else {
+			// Head in — lose 30% of haul
+			lost := m.gs.Freezer * 0.30
+			m.gs.Freezer = math.Max(0, m.gs.Freezer-lost)
+			m.addLogStyled(styleLogWarn, fmt.Sprintf("  Throttled back and ran for home. Left %.0f lbs in the water.", lost))
+			m.addLogStyled(styleLogGreen, "  Engine cooled down on the way in. Might've saved yourself a big repair bill.")
+		}
+
+	case EventHumpback:
+		if key == ev.KeyA {
+			// Haul around it — risk fine if entanglement
+			if rand.Float64() < 0.25 {
+				fine := 500.0 + rand.Float64()*1000.0
+				m.gs.Money -= fine
+				m.addLogStyled(styleLogDanger, fmt.Sprintf("  Gear got close. Marine Patrol saw it. $%.0f fine for unsafe operation near protected species.", fine))
+			} else {
+				m.addLogStyled(styleLogGreen, "  Whale moved off on its own. Finished the string clean.")
+			}
+		} else {
+			// Pull early — lose some catch
+			lost := m.gs.Freezer * 0.20
+			m.gs.Freezer = math.Max(0, m.gs.Freezer-lost)
+			m.addLogStyled(styleLogWarn, fmt.Sprintf("  Pulled early and moved off. Left about %.0f lbs behind. Whale didn't seem to care.", lost))
+		}
+
+	case EventRivalBoat:
+		if key == ev.KeyA {
+			// Radio him — might escalate or might work
+			if rand.Float64() < 0.60 {
+				m.addLogStyled(styleLogGreen, "  Danny backed off. Didn't say much. He knows.")
+				bonus := 5.0 + rand.Float64()*10.0
+				m.gs.Freezer += bonus
+				m.addLogStyled(styleLogGreen, fmt.Sprintf("  Traps fished better without him crowding the bottom. Extra %.0f lbs.", bonus))
+			} else {
+				m.addLogStyled(styleLogWarn, "  Danny told you where to go. Stayed put. Nothing you can do about it today.")
+				m.gs.PendingVandalism = true
+				m.addLogStyled(styleDim("  Someone cut a buoy line overnight. Could be coincidence."))
+			}
+		} else {
+			m.addLog(styleDim("  You let it go. Pick your battles."))
+		}
+
+	case EventWardenQuestions:
+		if key == ev.KeyA {
+			// Tell him — warden owes you one
+			m.addLogStyled(styleLogGreen, "  You give him the name. Warden nods, writes it down.")
+			m.addLogStyled(styleLogGreen, "  Week later he pulls you aside at the dock. Tips you off about a price bump at the co-op. Good karma.")
+			m.gs.Money += 40.0
+		} else {
+			// Play dumb — fine if nothing comes of it
+			if rand.Float64() < 0.30 {
+				m.addLogStyled(styleLogWarn, "  Warden looked at you a long time before he left. You're on his list now.")
+				fine := 200.0
+				m.gs.Money -= fine
+				m.addLogStyled(styleLogDanger, fmt.Sprintf("  Next boarding they found a technicality. $%.0f fine.", fine))
+			} else {
+				m.addLog(styleDim("  Warden moved on. Not your problem, not your name."))
+			}
+		}
+
+	case EventDoubleLoaded:
+		// No decision — pure bonus
+		bonus := 12.0 + rand.Float64()*18.0
+		m.gs.Freezer += bonus
+		m.gs.TotalCatch += bonus
+		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Counted %.0f lbs out of one trap. Bait was perfect. Wish every trap fished like that.", bonus))
+
+	case EventHelpNeighbor:
+		if key == ev.KeyA {
+			// Go help — lose 25% of haul, gain cash cut
+			lost := m.gs.Freezer * 0.25
+			m.gs.Freezer = math.Max(0, m.gs.Freezer-lost)
+			cut := 80.0 + rand.Float64()*80.0
+			m.gs.Money += cut
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Spent two hours on Billy's string. He squared you up with $%.0f cash on the dock.", cut))
+			m.addLogStyled(styleDim("  Billy Thurston owes you one. That matters around here."))
+		} else {
+			m.addLog(styleDim("  You stay on your own gear. Billy finds someone else."))
 		}
 	}
 

@@ -43,6 +43,13 @@ const (
 	// Negative events
 	EventSealRaid
 	EventCGCheck
+	EventEngineTempHigh
+	EventHumpback
+	EventRivalBoat
+	EventWardenQuestions
+	// Positive events
+	EventDoubleLoaded
+	EventHelpNeighbor
 )
 
 type RandomEvent struct {

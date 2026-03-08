@@ -754,7 +754,7 @@ func init() {
 
 // RollRandomEvent returns a random mid-haul event, or nil (70% chance of none)
 func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
-	if rand.Float64() > 0.30 {
+	if rand.Float64() > 0.50 {
 		return nil
 	}
 	events := []RandomEvent{
@@ -874,6 +874,60 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 		Desc:   "1100 — Coast Guard vessel off the port bow. They're hailing you for a routine boarding.",
 		KeyA:   "h", LabelA: "[H] Heave to and cooperate",
 		KeyB:   "r", LabelB: "[R] Radio that you're hauling, ask for delay",
+	})
+
+	// Engine temp in the red
+	events = append(events, RandomEvent{
+		Type:   EventEngineTempHigh,
+		Time:   "1030",
+		Desc:   "1030 — Engine temp gauge climbing into the red. Could be the thermostat. Could be worse.",
+		KeyA:   "p", LabelA: "[P] Push through and finish the string",
+		KeyB:   "h", LabelB: "[H] Throttle back and head in now",
+	})
+
+	// Humpback in the zone
+	events = append(events, RandomEvent{
+		Type:   EventHumpback,
+		Time:   "0950",
+		Desc:   "0950 — Humpback working the zone. Big one. You can see the entanglement risk from here.",
+		KeyA:   "h", LabelA: "[H] Haul around it (risk fine if gear tangles)",
+		KeyB:   "p", LabelB: "[P] Pull early and move off",
+	})
+
+	// Rival boat on your grounds
+	events = append(events, RandomEvent{
+		Type:   EventRivalBoat,
+		Time:   "0900",
+		Desc:   "0900 — Danny Colby's been working right next to your string all week. That's your spot and he knows it.",
+		KeyA:   "r", LabelA: "[R] Radio him — back off",
+		KeyB:   "i", LabelB: "[I] Let it go",
+	})
+
+	// Warden asking about a trap
+	events = append(events, RandomEvent{
+		Type:   EventWardenQuestions,
+		Time:   "1015",
+		Desc:   "1015 — Marine Patrol alongside. Warden asking questions about a trap nearby — wrong buoy colors, might be unlicensed. Not yours, but you know whose it is.",
+		KeyA:   "t", LabelA: "[T] Tell him whose it is",
+		KeyB:   "p", LabelB: "[P] Play dumb",
+	})
+
+	// Double-loaded trap (no decision — pure flavor + bonus)
+	events = append(events, RandomEvent{
+		Type:   EventDoubleLoaded,
+		Time:   "0935",
+		Desc:   "0935 — One trap came up so full the bricks were barely holding. Bait must've been perfect. Pulled it slow.",
+		KeyA:   "", LabelA: "",
+		KeyB:   "", LabelB: "",
+	})
+
+	// Help a neighbor haul their string for a cut
+	events = append(events, RandomEvent{
+		Type:   EventHelpNeighbor,
+		Time:   "0845",
+		Desc:   "0845 — Billy Thurston on channel 68. Hauler seized up mid-string. Asking if anyone can help finish his last set. Offering a quarter share.",
+		KeyA:   "h", LabelA: "[H] Go help (lose ~25% of your haul, get a cut)",
+		KeyB:   "k", LabelB: "[K] Keep hauling your own gear",
 	})
 
 	e := events[rand.Intn(len(events))]
