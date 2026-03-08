@@ -907,6 +907,46 @@ func (m *model) doHaul() {
 	// Build pre-event queue (everything up to and including the event timestamp)
 	m.pendingLines = nil
 	m.queueLog("0600 — Left the dock, steaming to grounds...")
+
+	// Breakdown check — engine health gates probability
+	breakdownChance := 0.0
+	if m.gs.Engine < 15 {
+		breakdownChance = 0.45
+	} else if m.gs.Engine < 25 {
+		breakdownChance = 0.25
+	} else if m.gs.Engine < 40 {
+		breakdownChance = 0.08
+	}
+	if breakdownChance > 0 && rand.Float64() < breakdownChance {
+		m.queueLogStyled(styleLogDanger, "0640 — Engine quit. Dead in the water.")
+		if m.gs.HasVHF && rand.Float64() < 0.50 {
+			m.queueLogStyled(styleLogGreen, "0645 — Got on channel 16. Billy from slip 12 heard you — he'll tow you in for a six-pack.")
+			m.queueLog("1100 — Back at the dock. No catch today.")
+			m.gs.Money -= 9 // cost of the six-pack
+		} else {
+			if m.gs.HasVHF {
+				m.queueLogStyled(styleLogWarn, "0645 — Put out a call on channel 16. No answer. Calling TowBoatUS.")
+			} else {
+				m.queueLogStyled(styleLogWarn, "0645 — No radio. Firing flares. Coast Guard spotted you.")
+			}
+			m.queueLogStyled(styleLogExpense, "1030 — Tow back to the dock. $300.")
+			m.gs.Money -= 300
+		}
+		// Zero out the haul — no catch today
+		m.gs.Freezer -= result.CatchLbs
+		m.gs.TotalCatch -= result.CatchLbs
+		result.CatchLbs = 0
+		result.Revenue = 0
+		result.Grades = nil
+		result.JonahCrabLbs = 0
+		result.RockCrabLbs = 0
+		result.GroundfishLbs = 0
+		m.haul = &result
+		m.queueLog("1200 — Engine in the shop. She'll need work before tomorrow.")
+		m.activeEvent = nil // no random events on a breakdown day
+		return
+	}
+
 	m.queueLog(fmt.Sprintf("0730 — First buoy in sight. Zone %s.", zone.ID))
 
 	if result.EngineDmg > 2.5 {
