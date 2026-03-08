@@ -783,6 +783,16 @@ func (m *model) syncAltViewport() {
 		content = m.viewDockContent()
 	case ScreenMarket:
 		content = m.viewMarketContent()
+		m.altVP.SetContent(content)
+		// Scroll viewport to follow cursor — each item ~1 line, section headers ~3 lines
+		// Sections: CREW(2), SUPPLIES(4), REPAIRS(3), EQUIPMENT(8), PERMITS(2), VESSELS(5)
+		sectionOffsets := []int{0, 0, 5, 5, 5, 5, 12, 12, 12, 19, 19, 19, 19, 19, 19, 19, 19, 19, 30, 30, 36, 36, 36, 36}
+		line := 0
+		if m.marketCursor < len(sectionOffsets) {
+			line = sectionOffsets[m.marketCursor] + m.marketCursor
+		}
+		m.altVP.SetYOffset(max(0, line-m.altVP.Height/2))
+		return
 	case ScreenChart:
 		content = m.viewChartContent()
 	}

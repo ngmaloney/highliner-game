@@ -251,7 +251,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			// Scroll alt viewport on non-interactive screens
-			if m.screen == ScreenDock || m.screen == ScreenMarket || m.screen == ScreenChart {
+			if m.screen == ScreenDock || m.screen == ScreenChart {
 				switch msg.String() {
 				case "up", "k":
 					m.altVP.LineUp(1)
