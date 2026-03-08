@@ -737,3 +737,218 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
+
+// RollRandomEvent returns a random mid-haul event, or nil (70% chance of none)
+func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
+	if rand.Float64() > 0.30 {
+		return nil
+	}
+	events := []RandomEvent{
+		{
+			Type:   EventBerriedHen,
+			Time:   "1045",
+			Desc:   "1045 — Big mama came up. V-notch, eggs all over the swimmerets. She's a broodstock female.",
+			KeyA:   "k", LabelA: "[K] Keep her (+$18, risk fine)",
+			KeyB:   "t", LabelB: "[T] Throw her back (legal)",
+		},
+		{
+			Type:   EventSquareGrouper,
+			Time:   "0910",
+			Desc:   "0910 — Something big tangled in the buoy line. Wrapped in plastic, waterlogged. You know what this is.",
+			KeyA:   "k", LabelA: "[K] Haul it aboard (+$2,500)",
+			KeyB:   "r", LabelB: "[R] Radio the Coast Guard",
+		},
+
+		{
+			Type:   EventGhostTrap,
+			Time:   "1200",
+			Desc:   "1200 — Found a derelict trap on the bottom. No buoy, no tag. Full of lobsters.",
+			KeyA:   "h", LabelA: "[H] Haul it up (gray area, extra lbs)",
+			KeyB:   "l", LabelB: "[L] Leave it",
+		},
+		{
+			Type:   EventStormComing,
+			Time:   "1145",
+			Desc:   "1145 — NOAA just issued a Gale Warning. Storm moving faster than forecast. You're an hour from the last set.",
+			KeyA:   "p", LabelA: "[P] Push through and finish",
+			KeyB:   "h", LabelB: "[H] Head in now (keep what you have)",
+		},
+	}
+	// Boat in distress only if player has VHF
+	if gs.HasVHF {
+		events = append(events, RandomEvent{
+			Type:   EventBoatDistress,
+			Time:   "0955",
+			Desc:   "0955 — Mayday on channel 16. Lobsterboat taking on water, 2 miles east.",
+			KeyA:   "h", LabelA: "[H] Go help (lose 2 hrs fishing)",
+			KeyB:   "i", LabelB: "[I] Keep hauling (someone else will get it)",
+		})
+	}
+	// Neighbor's trap — always possible
+	events = append(events, RandomEvent{
+		Type:   EventNeighborTrap,
+		Time:   "0850",
+		Desc:   "0850 — Someone else's warp fouled in your line. Trap came up with it. Still loaded.",
+		KeyA:   "h", LabelA: "[H] Haul it, keep the catch",
+		KeyB:   "l", LabelB: "[L] Untangle and drop it back",
+	})
+
+	// ── Positive events ──────────────────────────────────────────────────────
+
+	// Hot set — one trap way over-loaded
+	events = append(events, RandomEvent{
+		Type:   EventHotSet,
+		Time:   "0930",
+		Desc:   "0930 — One trap came up absolutely loaded. Stacked to the brim. You pull it slow.",
+		KeyA:   "h", LabelA: "[H] Haul every last one",
+		KeyB:   "s", LabelB: "[S] Sort and toss the shorts",
+	})
+
+	// Flatlander wedding price bump
+	events = append(events, RandomEvent{
+		Type:   EventFlatlander,
+		Time:   "0845",
+		Desc:   "0845 — Co-op called on the radio. Some flatlander's having a lobster bake wedding in Bar Harbor. Paying 20% over market on everything today.",
+		KeyA:   "r", LabelA: "[R] Radio back — you'll bring the haul",
+		KeyB:   "i", LabelB: "[I] Ignore it, sell normal",
+	})
+
+	// Old-timer tip
+	events = append(events, RandomEvent{
+		Type:   EventOldTimer,
+		Time:   "0730",
+		Desc:   "0730 — Old Donnie Beal crackles in on channel 68. Says he's been watching the temp break. Tells you to drop deep on the east side today.",
+		KeyA:   "t", LabelA: "[T] Take his advice (+10% catch)",
+		KeyB:   "i", LabelB: "[I] Stick to your usual spots",
+	})
+
+	// Sunken trap windfall
+	events = append(events, RandomEvent{
+		Type:   EventSunkTrap,
+		Time:   "1015",
+		Desc:   "1015 — Depth sounder lit up. Pile of gear on the bottom — traps from last season, still loaded. Could grapple them up.",
+		KeyA:   "g", LabelA: "[G] Grapple them up (free traps + catch)",
+		KeyB:   "l", LabelB: "[L] Leave it",
+	})
+
+	// Gray market halibut (only if no groundfish permit)
+	if !gs.HasGroundfishPermit {
+		events = append(events, RandomEvent{
+			Type:   EventGrayMarketHalibut,
+			Time:   "1050",
+			Desc:   "1050 — Halibut in the trap. Fat one. No groundfish permit — you're not supposed to keep it.",
+			KeyA:   "k", LabelA: "[K] Keep it, sell it quiet ($150 cash)",
+			KeyB:   "t", LabelB: "[T] Throw it back",
+		})
+	}
+
+	// ── Negative events ──────────────────────────────────────────────────────
+
+	// Seal raid
+	events = append(events, RandomEvent{
+		Type:   EventSealRaid,
+		Time:   "0920",
+		Desc:   "0920 — Big gray seal working the gear ahead of you. Pulling lobsters right out of the traps as they come up.",
+		KeyA:   "s", LabelA: "[S] Bang the hull, try to scare it off",
+		KeyB:   "i", LabelB: "[I] Ignore it, keep hauling",
+	})
+
+	// Coast Guard permit check
+	events = append(events, RandomEvent{
+		Type:   EventCGCheck,
+		Time:   "1100",
+		Desc:   "1100 — Coast Guard vessel off the port bow. They're hailing you for a routine boarding.",
+		KeyA:   "h", LabelA: "[H] Heave to and cooperate",
+		KeyB:   "r", LabelB: "[R] Radio that you're hauling, ask for delay",
+	})
+
+	e := events[rand.Intn(len(events))]
+	return &e
+}
+
+// RollMorningGossip returns 1-2 lines of dock gossip for the morning briefing
+func RollMorningGossip(gs *GameState, weather Weather) []string {
+	// Contextual lines that reference actual game state
+	var contextual []string
+	if gs.HotCrabZone != "" {
+		contextual = append(contextual,
+			fmt.Sprintf("Jimmy at the co-op says Zone %s is all crabbed up. Said it like it was a bad thing. Man doesn't have a crab permit.", gs.HotCrabZone),
+			fmt.Sprintf("Word around the dock is Zone %s is running heavy crab. Take it or leave it.", gs.HotCrabZone),
+		)
+	}
+	if weather.Type == WeatherFog {
+		contextual = append(contextual,
+			"Thick out there this morning. Ronnie Thurston went out anyway. Ronnie Thurston also drives without his glasses. Connect the dots.",
+			"Fog so thick you can't see the end of the dock. Pete Whitmore called it 'good visibility' and went out. Pete's wife looks nervous.",
+		)
+	}
+	if weather.Type == WeatherSCA || weather.Type == WeatherGale {
+		contextual = append(contextual,
+			"Nobody's going out in this. Well. Crazy Eddie might. That's how he got the name.",
+			"Coast Guard's been on the radio all morning. Stay in port and let 'em earn their pay.",
+		)
+	}
+	if gs.Engine < 50 {
+		contextual = append(contextual,
+			"Leroy's engine seized up mid-string last week. Fixed it with wire and a prayer. Said it's 'good as new.' Check your oil.",
+		)
+	}
+
+	// Static gossip pool — salty Maine humor
+	static := []string{
+		"Frankie Greenlaw bought a new boat. Three hundred thousand dollars. His wife left two days later. Cheaper to keep 'er, Frankie.",
+		"Beautiful morning. Ruined by running into Dave Peasley at the fuel dock at 0430. Man talks like he's getting paid by the word.",
+		"Waterfront restaurant in town's charging $38 for a lobster roll. Thirty-eight dollars. We pull 'em for six bucks a pound and some flatlander pays $38 for a sandwich.",
+		"Co-op's new scale's been reading light. Mickey Ames weighed his boat dog on it — said 38 lbs. Dog's at least 50. We're getting robbed.",
+		"State inspector came through Stonington yesterday checking V-notches. Couldn't tell a hen from a buoy. Sent him back to Augusta.",
+		"New summer people put their kayak in the middle of the channel again. Tommy nearly ran 'em over. Said he tried to miss but couldn't decide which way they'd go.",
+		"Heard Stevie Pomerleau's been 'fishing' Zone B all week. His wife says he's fishing. Co-op says his boat ain't moved. You do the math.",
+		"Eddie from the fuel dock says diesel's going up next week. Eddie also said the Red Sox were gonna win the Series. Take that for what it's worth.",
+		"Old Pete Whitmore showed up in brand new Grundéns. Still in the bag, creases and everything. Boys at the co-op said he looked like he bought 'em for a costume. He did not take it well.",
+		"Ronnie Thurston's been bragging about pulling a 7-pounder. Nobody believes him. Man can barely pull his pants up straight.",
+		"Jimmy at the co-op says Zone D was loaded yesterday. Jimmy also charges $4 for coffee. Man's judgment is suspect across the board.",
+		"Fog rolled in on Ricky Pease out by the outer ledges. Found him going in circles an hour later. Second time this month. 'Bought a GPS,' he says. Ayuh.",
+		"Marcy at the bait shed says herring's gonna be scarce next month. Course Marcy also named her cat 'Diesel' and feeds it tuna. Woman's a mystery.",
+		"Selectman wants to put a hotel on the waterfront. Over my dead body. Over a lot of dead bodies, actually — that's where we keep our gear.",
+		"Summer people keep waving at the lobster boats from their sailboats. Captain Danny started waving back with one finger. Progress.",
+		"Heard Zone E was stacked last week. Also heard it's been picked clean since. Take your chances and your diesel.",
+		"Bait's running high. Forty cents a pound more than last month. You're not fishing, you're feeding herring to the ocean.",
+		"Leroy's hauler seized up mid-string Tuesday. Fixed it with a piece of wire and a prayer. Says it's good as new. Don't fish downwind of Leroy.",
+		"Some college kid from UMaine's doing a 'study' on lobster migration. Been following boats around with a clipboard. We've been giving him bad data.",
+		"Heard the DMR's sending out more wardens this month. Keep your V-notch throwbacks clean and your permits handy.",
+		"Donnie Beal's been out since 0400 every day this week. Man's 74 years old. Makes the rest of us look bad. Intentionally, I think.",
+		"Young kid from away bought a boat, painted it white, named it 'Sea Renity.' She sank at the mooring first night. Universe has a sense of humor.",
+		"Tide's been running strong in Zone B all week. Lost two traps to that current this month. You've been warned and I've stopped warning.",
+		"Danny Coombs got a stern camera. Says it's for 'safety.' His wife says she checks the footage every night. Different kind of safety.",
+		"Price of lobster at the grocery store in Ellsworth is $24.99 a pound. We're getting $6. The math on that doesn't work in our favor.",
+		"Heard there's a whale been working the outer ledges. Good news: lobster run away from whales. Bad news: so does your gear.",
+		"Harold from the trap shop says wire mesh is backordered six weeks. Buy what you need now or you'll be knitting your own.",
+		"Bobby Torrey got his moose permit. Taking two weeks off. Said it like he won the lottery. Might as well have.",
+		"Kenny Leighton drew a moose permit third year in a row. Man puts in for every zone. Rest of us haven't seen a tag in ten years. Life ain't fair.",
+		"Heard Wayne Alley's taking the week off — finally drew his moose permit after twelve years. Boat's just sitting at the mooring. Can't blame him.",
+		"Shawn Conary says if this season holds he's getting two new sleds. Said the same thing last year. And the year before. Sleds are still '09s.",
+		"Dale Eaton's been talking all summer about getting a new Polaris side-by-side for upta camp this fall. Dale also owes me forty bucks. I'll believe it when I see it.",
+		"Terry Beal had three good weeks in a row and already bought a new sled. Didn't fix his hauler, didn't pay down his trap loan — bought a sled. That's lobstering.",
+		"If the crab holds through September, Phil Robbins says he's finally getting that new camp upta Parlin Pond. Phil's been saying that since 2014.",
+		"Ricky Gray told his wife if he has one more week like last week she's getting a new kitchen. His wife said she'd rather have a new sled. Woman knows what matters.",
+		"Heard Daryl Sprague got pinched upta camp last weekend. Warden caught him with a doe and no tag. Rifle, freezer bags, the whole operation. IF&W don't play.",
+		"Gary Hutchins thought he was slick — bagged some camp meat two weeks before season. Game warden was parked at the end of the road the whole time. Lost his license, his rifle, and his dignity. In that order.",
+		"Asked Clyde how Zone C's been fishing lately. 'Hard tellin', not knowin',' he says. Helpful as always.",
+		"Someone asked Donnie Beal if the price was gonna hold through October. 'Hard tellin', not knowin'.' Man's been fishing 40 years and that's his answer for everything.",
+		"New guy on the dock rigged his own traps first season. Knots were something else. Ain't you cunning, kid.",
+		"Warden come by checking licenses last Tuesday. Looked at Earl Coombs's setup and said 'nice rig.' Earl said 'finest kind.' Warden didn't know what that meant but he left anyway.",
+		"Haul's been some good this week if the weather holds. Hard tellin' after that.",
+		"Heard the co-op's getting a new scale. About time. Current one's been reading light all summer. Hard tellin' how much that's cost us.",
+	}
+
+	var lines []string
+	// Maybe add a contextual line
+	if len(contextual) > 0 && rand.Float64() < 0.60 {
+		lines = append(lines, contextual[rand.Intn(len(contextual))])
+	}
+	// Always add one static line
+	lines = append(lines, static[rand.Intn(len(static))])
+
+	return lines
+}
+
