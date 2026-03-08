@@ -576,6 +576,8 @@ func (m model) viewMarketContent() string {
 
 	b.WriteString("\n")
 	b.WriteString(styleKey.Render("  [↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs"))
+	// Padding so viewport can always scroll last items into view
+	b.WriteString(strings.Repeat("\n", 20))
 
 	return b.String()
 }
@@ -775,12 +777,21 @@ func (m *model) syncAltViewport() {
 	case ScreenMarket:
 		content = m.viewMarketContent()
 		m.altVP.SetContent(content)
-		// Exact cursor→line mapping (1 line per subHeader, 1 per item, 1 per \n gap):
-		// CREW(0), SUPPLIES(4), REPAIRS(10), EQUIPMENT(15), PERMITS(26), BOATS(30)
-		cursorLines := []int{1, 2, 5, 6, 7, 8, 11, 12, 13, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27, 28, 31, 32, 33, 34, 35}
+		// Compute which line the cursor is on.
+		// Section item counts: CREW=2, SUPPLIES=4, REPAIRS=3, EQUIPMENT=9, PERMITS=2, VESSELS=5
+		// Layout: subHeader(1) + items + gap(1) per section
+		wharfSectionCounts := []int{2, 4, 3, 9, 2, 5}
+		cursor := m.marketCursor
 		line := 0
-		if m.marketCursor < len(cursorLines) {
-			line = cursorLines[m.marketCursor]
+		for _, count := range wharfSectionCounts {
+			line++ // subHeader
+			if cursor < count {
+				line += cursor
+				break
+			}
+			line += count
+			line++ // gap
+			cursor -= count
 		}
 		m.altVP.SetYOffset(max(0, line-m.altVP.Height/2))
 		return
