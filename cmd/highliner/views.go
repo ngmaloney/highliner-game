@@ -428,7 +428,7 @@ func (m model) viewMarketContent() string {
 		{"Hire Greenhand", func() string {
 			if m.gs.HasSternman && !m.gs.SternmanSkilled { return "hired" }
 			if m.gs.HasSternman { return "-" }
-			return "$60"
+			return "$60/day"
 		}(), func() string {
 			if m.gs.HasSternman && !m.gs.SternmanSkilled { return "✓ on deck today (+15% yield, occasional mishaps)" }
 			return "+15% yield — enthusiastic, but watch your keepers"
@@ -436,7 +436,7 @@ func (m model) viewMarketContent() string {
 		{"Hire Experienced Hand", func() string {
 			if m.gs.HasSternman && m.gs.SternmanSkilled { return "hired" }
 			if m.gs.HasSternman { return "-" }
-			return "$150"
+			return "$150/day"
 		}(), func() string {
 			if m.gs.HasSternman && m.gs.SternmanSkilled { return "✓ on deck today (+30% yield)" }
 			return "+30% yield, less hydraulic wear — knows the job"
