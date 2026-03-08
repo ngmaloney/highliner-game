@@ -1535,5 +1535,6 @@ func (m *model) doBuy() {
 
 	item := items[m.marketCursor]
 	item.apply()
+	m.syncAltViewport()
 	saveGame(m.gs)
 }
