@@ -985,7 +985,7 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"New summer people put their kayak in the middle of the channel again. Tommy nearly ran 'em over. Said he tried to miss but couldn't decide which way they'd go.",
 		"Heard Stevie Pomerleau's been 'fishing' Zone B all week. His wife says he's fishing. Co-op says his boat ain't moved. You do the math.",
 		"Eddie from the fuel dock says diesel's going up next week. Eddie also said the Red Sox were gonna win the Series. Take that for what it's worth.",
-		"Old Pete Whitmore got new L.L. Bean foul weather gear. Boys at the co-op said he looked like a goddamn lobster himself. He did not take it well.",
+		"Old Pete Whitmore showed up in brand new Grundéns. Still in the bag, creases and everything. Boys at the co-op said he looked like he bought 'em for a costume. He did not take it well.",
 		"Ronnie Thurston's been bragging about pulling a 7-pounder. Nobody believes him. Man can barely pull his pants up straight.",
 		"Jimmy at the co-op says Zone D was loaded yesterday. Jimmy also charges $4 for coffee. Man's judgment is suspect across the board.",
 		"Fog rolled in on Ricky Pease out by the outer ledges. Found him going in circles an hour later. Second time this month. 'Bought a GPS,' he says. Ayuh.",
