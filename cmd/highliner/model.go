@@ -1437,12 +1437,42 @@ func (m model) View() string {
 	b.WriteString("\n")
 	// Persistent stats bar — always visible on every screen
 	boat := BoatModels[m.gs.BoatName]
-	statsBar := fmt.Sprintf("  Cash: %s   Fuel: %d/%d gal   Bait: %d/%d lbs   Traps: %d/%d",
-		moneyStr(m.gs.Money),
-		m.gs.Fuel, boat.FuelCap,
-		m.gs.Bait, boat.BaitCap,
-		m.gs.Traps, boat.MaxTraps)
-	b.WriteString(lipgloss.NewStyle().Foreground(colorBrightWhite).Background(lipgloss.Color("235")).Width(m.width).Render(statsBar))
+	bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("235"))
+	statLabel := bgStyle.Foreground(colorBrightWhite).Render
+	statVal := func(val, warn, danger string, isWarn, isDanger bool) string {
+		color := colorBrightWhite
+		if isDanger {
+			color = lipgloss.Color("#FF3333")
+		} else if isWarn {
+			color = lipgloss.Color("#FF8C00")
+		}
+		return bgStyle.Foreground(color).Bold(isDanger || isWarn).Render(val) +
+			bgStyle.Foreground(colorBrightWhite).Render(warn+danger)
+	}
+
+	fuelPct := float64(m.gs.Fuel) / float64(boat.FuelCap)
+	baitPct := float64(m.gs.Bait) / float64(boat.BaitCap)
+	trapPct := float64(m.gs.Traps) / float64(boat.MaxTraps)
+
+	fuelStr := statVal(
+		fmt.Sprintf("%d/%d gal", m.gs.Fuel, boat.FuelCap), "", "",
+		fuelPct < 0.30, fuelPct < 0.15)
+	baitStr := statVal(
+		fmt.Sprintf("%d/%d lbs", m.gs.Bait, boat.BaitCap), "", "",
+		baitPct < 0.30, m.gs.Bait == 0)
+	trapStr := statVal(
+		fmt.Sprintf("%d/%d", m.gs.Traps, boat.MaxTraps), "", "",
+		trapPct < 0.40, trapPct < 0.20)
+
+	statsBar := lipgloss.JoinHorizontal(lipgloss.Top,
+		bgStyle.Render("  "),
+		statLabel("Cash: "), bgStyle.Foreground(colorBrightWhite).Render(moneyStr(m.gs.Money)),
+		statLabel("   Fuel: "), fuelStr,
+		statLabel("   Bait: "), baitStr,
+		statLabel("   Traps: "), trapStr,
+		bgStyle.Foreground(colorBrightWhite).Render("  "),
+	)
+	b.WriteString(lipgloss.NewStyle().Background(lipgloss.Color("235")).Width(m.width).Render(statsBar))
 	b.WriteString("\n")
 	// Fix #7: consistent separator — full-width cyan rule
 	b.WriteString(lipgloss.NewStyle().Foreground(colorCyan).Render(strings.Repeat("─", m.width)))
