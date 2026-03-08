@@ -1031,7 +1031,7 @@ func (m *model) resolveEvent(key string) {
 			} else {
 				m.addLogStyled(styleLogWarn, "  Danny told you where to go. Stayed put. Nothing you can do about it today.")
 				m.gs.PendingVandalism = true
-				m.addLogStyled(styleDim("  Someone cut a buoy line overnight. Could be coincidence."))
+				m.addLog(styleDim("  Someone cut a buoy line overnight. Could be coincidence."))
 			}
 		} else {
 			m.addLog(styleDim("  You let it go. Pick your battles."))
@@ -1070,7 +1070,7 @@ func (m *model) resolveEvent(key string) {
 			cut := 80.0 + rand.Float64()*80.0
 			m.gs.Money += cut
 			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Spent two hours on Billy's string. He squared you up with $%.0f cash on the dock.", cut))
-			m.addLogStyled(styleDim("  Billy Thurston owes you one. That matters around here."))
+			m.addLog(styleDim("  Billy Thurston owes you one. That matters around here."))
 		} else {
 			m.addLog(styleDim("  You stay on your own gear. Billy finds someone else."))
 		}
