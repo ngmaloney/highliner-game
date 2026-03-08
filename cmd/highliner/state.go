@@ -332,6 +332,9 @@ type GameState struct {
 	HasCrabPermit       bool `json:"has_crab_permit"`       // keep/sell Jonah + rock crab
 	HasGroundfishPermit bool `json:"has_groundfish_permit"` // keep/sell monkfish + sea bass
 
+	HasSternman      bool `json:"has_sternman"`       // hired for today only, resets each morning
+	SternmanSkilled  bool `json:"sternman_skilled"`   // experienced vs greenhand
+
 	PendingVandalism bool `json:"pending_vandalism"` // trap thief flagged — engine damage possible next morning
 }
 
@@ -405,7 +408,9 @@ type HaulResult struct {
 	HydraulicsDmg float64
 	HullDmg       float64
 	TrapsLost     int
-	CrabCrowded   bool    // crabs reduced lobster catch this haul
+	CrabCrowded      bool    // crabs reduced lobster catch this haul
+	SternmanMishap   bool    // greenhand caused a mishap
+	SternmanMishapLbs float64 // lbs lost to mishap
 	// Bycatch (kept, with permit)
 	JonahCrabLbs   float64
 	RockCrabLbs    float64
@@ -573,6 +578,9 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	zincsDmg := (1.0 + rand.Float64()*1.0) * steamFactor
 	// Hydraulics: hauler cycles — more traps and longer run means more pump hours
 	hydDmg := (0.4 + rand.Float64()*0.5) * steamFactor
+	if gs.HasSternman && gs.SternmanSkilled {
+		hydDmg *= 0.8 // experienced hand handles the hauler properly
+	}
 
 	// Hull damage from weather
 	hullDmg := weather.HullDamage * boat.HullRisk * (rand.Float64() * 0.5 + 0.5)
@@ -629,6 +637,23 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	crabPerTrap := (rolledJonahLbs + rolledRockLbs) / math.Max(1, traps)
 	crowding := math.Max(0.5, 1.0-(crabPerTrap/trapCapacityLbs)*0.8)
 	catchLbs *= crowding
+
+	// Sternman boost
+	var sternmanMishap bool
+	var sternmanMishapLbs float64
+	if gs.HasSternman {
+		if gs.SternmanSkilled {
+			catchLbs *= 1.30
+		} else {
+			catchLbs *= 1.15
+			// 10% chance greenhand causes a mishap — drops keepers overboard
+			if rand.Float64() < 0.10 {
+				sternmanMishap = true
+				sternmanMishapLbs = 5.0 + rand.Float64()*10.0
+				catchLbs = math.Max(0, catchLbs-sternmanMishapLbs)
+			}
+		}
+	}
 
 	// Bait: crabs eat bait aggressively — heavy crab load burns through herring faster
 	baitPerTrap := 2.0 + rand.Float64()*1.0 // 2.0-3.0 lbs/trap baseline
@@ -689,7 +714,9 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		HydraulicsDmg: hydDmg,
 		HullDmg:       hullDmg,
 		TrapsLost:     trapsLost,
-		CrabCrowded:   crowding < 0.85,
+		CrabCrowded:       crowding < 0.85,
+		SternmanMishap:    sternmanMishap,
+		SternmanMishapLbs: sternmanMishapLbs,
 		JonahCrabLbs:         jonahLbs,
 		RockCrabLbs:          rockLbs,
 		GroundfishName:       groundfishName,

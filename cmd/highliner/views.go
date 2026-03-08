@@ -431,7 +431,28 @@ func (m model) viewMarketContent() string {
 		}()},
 	}
 
-	allItems := append(supplyItems, repairItems...)
+	// Crew section
+	crewItems := []wharfItem{
+		{"Hire Greenhand", func() string {
+			if m.gs.HasSternman && !m.gs.SternmanSkilled { return "hired" }
+			if m.gs.HasSternman { return "-" }
+			return "$60"
+		}(), func() string {
+			if m.gs.HasSternman && !m.gs.SternmanSkilled { return "✓ on deck today (+15% yield, occasional mishaps)" }
+			return "+15% yield — enthusiastic, but watch your keepers"
+		}()},
+		{"Hire Experienced Hand", func() string {
+			if m.gs.HasSternman && m.gs.SternmanSkilled { return "hired" }
+			if m.gs.HasSternman { return "-" }
+			return "$150"
+		}(), func() string {
+			if m.gs.HasSternman && m.gs.SternmanSkilled { return "✓ on deck today (+30% yield)" }
+			return "+30% yield, less hydraulic wear — knows the job"
+		}()},
+	}
+
+	allItems := append(crewItems, supplyItems...)
+	allItems = append(allItems, repairItems...)
 	allItems = append(allItems, equipItems...)
 	allItems = append(allItems, permitItems...)
 
@@ -453,17 +474,20 @@ func (m model) viewMarketContent() string {
 
 	_ = allItems // used by doBuy via m.marketCursor
 
+	b.WriteString(subHeader("CREW", m.width))
+	renderItems(crewItems, 0)
+	b.WriteString("\n")
 	b.WriteString(subHeader("SUPPLIES", m.width))
-	renderItems(supplyItems, 0)
+	renderItems(supplyItems, len(crewItems))
 	b.WriteString("\n")
 	b.WriteString(subHeader("REPAIRS", m.width))
-	renderItems(repairItems, len(supplyItems))
+	renderItems(repairItems, len(crewItems)+len(supplyItems))
 	b.WriteString("\n")
 	b.WriteString(subHeader("EQUIPMENT", m.width))
-	renderItems(equipItems, len(supplyItems)+len(repairItems))
+	renderItems(equipItems, len(crewItems)+len(supplyItems)+len(repairItems))
 	b.WriteString("\n")
 	b.WriteString(subHeader("PERMITS", m.width))
-	renderItems(permitItems, len(supplyItems)+len(repairItems)+len(equipItems))
+	renderItems(permitItems, len(crewItems)+len(supplyItems)+len(repairItems)+len(equipItems))
 
 	b.WriteString("\n")
 	b.WriteString(styleKey.Render("  [↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs"))
@@ -472,7 +496,7 @@ func (m model) viewMarketContent() string {
 	b.WriteString(subHeader("BOAT UPGRADES", m.width))
 	fleetOrder := []string{"Crowley Beal 28", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
 	// boat upgrade items start at index 13 (after 4 supply, 3 repair, 6 equip, 2 permit)
-	boatBaseIdx := len(supplyItems) + len(repairItems) + len(equipItems) + len(permitItems)
+	boatBaseIdx := len(crewItems) + len(supplyItems) + len(repairItems) + len(equipItems) + len(permitItems)
 	currentBoat := BoatModels[m.gs.BoatName]
 	for i, name := range fleetOrder {
 		bm := BoatModels[name]

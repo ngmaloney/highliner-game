@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 17 {
+			if m.marketCursor < 19 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -238,6 +238,8 @@ func (m *model) doEvening() {
 func (m *model) doNextDay() {
 	m.gs.Day++
 	m.weather = rollWeather()
+	m.gs.HasSternman = false
+	m.gs.SternmanSkilled = false
 	m.haul = nil
 	m.screen = ScreenLog
 	m.addLog("")
@@ -528,6 +530,13 @@ func (m *model) doHaul() {
 
 	// Build pre-event queue
 	m.pendingLines = nil
+	if m.gs.HasSternman {
+		if m.gs.SternmanSkilled {
+			m.queueLog("0530 — Your experienced hand's already rigging gear when you get to the dock.")
+		} else {
+			m.queueLog("0600 — Your greenhand shows up right on time. Seems eager enough.")
+		}
+	}
 	m.queueLog("0600 — Left the dock, steaming to grounds...")
 
 	// Breakdown check
@@ -607,6 +616,14 @@ func (m *model) doHaul() {
 	} else if !m.gs.HasGroundfishPermit && rand.Float64() < 0.12 {
 		fish := []string{"monkfish", "cusk", "halibut"}[rand.Intn(3)]
 		m.queueLogStyled(styleLogWarn, fmt.Sprintf("1055 — Pulled a %s. No groundfish permit — back it goes.", fish))
+	}
+	if result.SternmanMishap {
+		mishaps := []string{
+			"0915 — Your greenhand dropped a full crate over the side.",
+			"1005 — Greenhand tangled the banding. Lost time sorting it out.",
+			"1020 — Kid grabbed the wrong buoy line. Pulled someone else's gear halfway up.",
+		}
+		m.queueLogStyled(styleLogWarn, fmt.Sprintf("%s %.0f lbs back in the water.", mishaps[rand.Intn(len(mishaps))], result.SternmanMishapLbs))
 	}
 	if result.TrapsLost > 0 {
 		trapCost := float64(result.TrapsLost) * BoatModels[m.gs.BoatName].TrapCost
@@ -927,6 +944,36 @@ func (m *model) doBuy() {
 		cost  float64
 		apply func()
 	}{
+		// CREW
+		{"Hire Greenhand", 60, func() {
+			if m.gs.HasSternman {
+				m.confirmBuy = "Already have crew for today."
+				return
+			}
+			if m.gs.Money < 60 {
+				m.confirmBuy = fmt.Sprintf("Need $60 — short by %s", moneyStr(60-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 60
+			m.gs.HasSternman = true
+			m.gs.SternmanSkilled = false
+			m.confirmBuy = "Greenhand hired. He's waiting at the dock."
+		}},
+		{"Hire Experienced Hand", 150, func() {
+			if m.gs.HasSternman {
+				m.confirmBuy = "Already have crew for today."
+				return
+			}
+			if m.gs.Money < 150 {
+				m.confirmBuy = fmt.Sprintf("Need $150 — short by %s", moneyStr(150-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 150
+			m.gs.HasSternman = true
+			m.gs.SternmanSkilled = true
+			m.confirmBuy = "Experienced hand hired. He knows what he's doing."
+		}},
+		// SUPPLIES
 		{"Bait (50 lbs)", 30.00, func() {
 			cap := BoatModels[m.gs.BoatName].BaitCap
 			if m.gs.Bait >= cap {
