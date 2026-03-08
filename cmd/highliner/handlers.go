@@ -1070,6 +1070,27 @@ func (m *model) resolveEvent(key string) {
 		m.gs.TotalCatch += bonus
 		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Counted %.0f lbs out of one trap. Bait was perfect. Wish every trap fished like that.", bonus))
 
+	case EventCoastGuardBoarding:
+		fine := 0.0
+		var violations []string
+		if !m.gs.HasFireExtinguisher {
+			fine += 500
+			violations = append(violations, "no fire extinguisher")
+		}
+		if !m.gs.HasLifeRaft {
+			fine += 500
+			violations = append(violations, "no life raft")
+		}
+		if len(violations) == 0 {
+			m.addLogStyled(styleLogGreen, "  Everything checks out. Officer nods, they shove off.")
+			m.addLog(styleDim("  \"Good to see somebody's running right out here.\""))
+		} else {
+			m.gs.Money -= fine
+			m.addLogStyled(styleDanger, fmt.Sprintf("  Violations: %s", strings.Join(violations, ", ")))
+			m.addLogStyled(styleDanger, fmt.Sprintf("  $%.0f fine. Fix it before they catch you again.", fine))
+			m.addLog(styleDim("  Officer hands you the citation. \"Get it squared away, Captain.\""))
+		}
+
 	case EventEngineFire:
 		if ev.KeyA == "e" && key == "e" && m.gs.HasFireExtinguisher {
 			// Fought the fire — extinguisher gone, engine torched, towed home

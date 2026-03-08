@@ -193,12 +193,12 @@ func (m model) viewDockContent() string {
 		} else {
 			hs = styleDanger
 		}
-		b.WriteString(fmt.Sprintf("  %-14s %s %s  %s\n",
-			styleLabel.Render(c.name+":"),
+		b.WriteString(fmt.Sprintf("  %s %s %s  %s\n",
+			label(c.name+":", 14),
 			bar,
 			hs.Render(fmt.Sprintf("%5.1f%%", c.health)),
 			hs.Render(status)))
-		b.WriteString(fmt.Sprintf("  %-14s %s\n\n", "", styleDim(c.repair)))
+		b.WriteString(fmt.Sprintf("  %s %s\n\n", label("", 14), styleDim(c.repair)))
 	}
 
 	// ── GEAR & SUPPLIES ──────────────────────────────────────────────────────
@@ -207,6 +207,32 @@ func (m model) viewDockContent() string {
 	b.WriteString(fmt.Sprintf("  %s %s / %d lbs cap\n", label("Bait:", 12), styleValue.Render(fmt.Sprintf("%d", m.gs.Bait)), m.gs.EffectiveBaitCap()))
 	b.WriteString(fmt.Sprintf("  %s %s / %d gal cap\n", label("Fuel:", 12), styleValue.Render(fmt.Sprintf("%d gal", m.gs.Fuel)), boat.FuelCap))
 	b.WriteString(fmt.Sprintf("  %s %s lbs\n\n", label("Hold:", 12), styleValue.Render(fmt.Sprintf("%.1f", m.gs.Freezer))))
+
+	// ── SAFETY GEAR ──────────────────────────────────────────────────────────
+	b.WriteString(subHeader("SAFETY GEAR", m.width))
+	safetyItems := []struct {
+		name    string
+		owned   bool
+		req     bool // required by law
+		desc    string
+	}{
+		{"Fire Extinguisher", m.gs.HasFireExtinguisher, true, "required — $350 at wharf"},
+		{"Life Raft", m.gs.HasLifeRaft, true, "required — $2,000 at wharf"},
+		{"Grapple Hook", m.gs.HasGrapple, false, "$500 at wharf"},
+		{"VHF Radio", m.gs.HasVHF, false, "$500 at wharf — required for distress events"},
+	}
+	for _, s := range safetyItems {
+		var status string
+		if s.owned {
+			status = styleGood.Render("✓ aboard")
+		} else if s.req {
+			status = styleDanger.Render("✗ NOT ABOARD — CG fine risk")
+		} else {
+			status = styleDim("✗ not aboard")
+		}
+		b.WriteString(fmt.Sprintf("  %s %s   %s\n", label(s.name+":", 22), status, styleDim(s.desc)))
+	}
+	b.WriteString("\n")
 
 	// ── FINANCES ─────────────────────────────────────────────────────────────
 	b.WriteString(subHeader("FINANCES", m.width))

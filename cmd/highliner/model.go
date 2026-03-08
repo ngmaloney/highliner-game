@@ -52,6 +52,7 @@ const (
 	EventHelpNeighbor
 	EventFoundOldGear
 	EventEngineFire
+	EventCoastGuardBoarding
 )
 
 type RandomEvent struct {

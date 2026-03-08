@@ -982,6 +982,13 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 	})
 
 	events = append(events, RandomEvent{
+		Type:   EventCoastGuardBoarding,
+		Time:   "0930",
+		Desc:   "0930 — Coast Guard Aids to Navigation boat off your stern. They're coming alongside. Routine safety inspection.",
+		KeyA:   "k", LabelA: "[K] Let them aboard",
+	})
+
+	events = append(events, RandomEvent{
 		Type: EventEngineFire,
 		Time: "1130",
 		Desc: func() string {
