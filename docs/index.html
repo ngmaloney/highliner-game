@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIGHLINER — Maine Lobster Fishing Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00ff41;
+    --amber: #ffb300;
+    --dim: #2a7a3a;
+    --red: #ff3333;
+    --orange: #ff8c00;
+    --cyan: #00d4d4;
+    --bg: #0a0f0a;
+    --bg2: #0d140d;
+    --border: #1a3a1a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanlines */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* phosphor glow effect */
+  .glow { text-shadow: 0 0 8px var(--green), 0 0 20px rgba(0,255,65,0.3); }
+  .glow-amber { text-shadow: 0 0 8px var(--amber), 0 0 20px rgba(255,179,0,0.3); }
+  .glow-cyan { text-shadow: 0 0 8px var(--cyan), 0 0 20px rgba(0,212,212,0.3); }
+
+  /* ─── HERO ─── */
+  .hero {
+    text-align: center;
+    padding: 60px 20px 40px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .hero-logo {
+    font-family: 'VT323', monospace;
+    font-size: clamp(56px, 10vw, 96px);
+    color: var(--amber);
+    letter-spacing: 8px;
+    line-height: 1;
+    text-shadow: 0 0 20px var(--amber), 0 0 60px rgba(255,179,0,0.4), 3px 3px 0 rgba(255,140,0,0.3);
+  }
+
+  .hero-sub {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: var(--dim);
+    letter-spacing: 4px;
+    margin-top: 8px;
+  }
+
+  .hero-tagline {
+    font-size: 15px;
+    color: var(--green);
+    margin-top: 20px;
+    letter-spacing: 2px;
+    opacity: 0.8;
+  }
+
+  .blink {
+    animation: blink 1.2s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .cover-img {
+    display: block;
+    margin: 40px auto 0;
+    max-width: 700px;
+    width: 100%;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 40px rgba(0,255,65,0.1), 0 0 80px rgba(0,0,0,0.8);
+  }
+
+  /* ─── CTA ─── */
+  .cta-bar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 40px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .btn {
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    letter-spacing: 2px;
+    padding: 10px 28px;
+    border: 1px solid currentColor;
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .btn-primary {
+    color: var(--bg);
+    background: var(--green);
+    border-color: var(--green);
+    box-shadow: 0 0 12px rgba(0,255,65,0.4);
+  }
+  .btn-primary:hover {
+    background: var(--amber);
+    border-color: var(--amber);
+    box-shadow: 0 0 16px rgba(255,179,0,0.5);
+  }
+  .btn-secondary {
+    color: var(--green);
+    background: transparent;
+    border-color: var(--dim);
+  }
+  .btn-secondary:hover {
+    border-color: var(--green);
+    box-shadow: 0 0 8px rgba(0,255,65,0.2);
+  }
+
+  /* ─── SECTIONS ─── */
+  section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-family: 'VT323', monospace;
+    font-size: 13px;
+    color: var(--dim);
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: 'VT323', monospace;
+    font-size: 36px;
+    color: var(--cyan);
+    letter-spacing: 3px;
+    margin-bottom: 24px;
+    text-shadow: 0 0 10px rgba(0,212,212,0.3);
+  }
+
+  p {
+    color: #aaccaa;
+    line-height: 1.7;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  /* ─── TERMINAL SCREENSHOTS ─── */
+  .screenshots {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .terminal-wrap {
+    border: 1px solid var(--border);
+    box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 60px rgba(0,0,0,0.3);
+  }
+
+  .terminal-bar {
+    background: #1a2a1a;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .terminal-title {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 2px;
+  }
+
+  .terminal-body {
+    background: var(--bg2);
+    padding: 16px 20px;
+    overflow-x: auto;
+  }
+
+  .terminal-body pre {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre;
+    color: #cceecc;
+  }
+
+  /* terminal text colors */
+  .t-green  { color: #00ff41; }
+  .t-amber  { color: #ffb300; }
+  .t-cyan   { color: #00d4d4; }
+  .t-dim    { color: #4a7a4a; }
+  .t-orange { color: #ff8c00; }
+  .t-red    { color: #ff3333; }
+  .t-white  { color: #eeffee; }
+  .t-bold   { font-weight: bold; }
+
+  /* ─── FEATURES ─── */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+  }
+
+  .feature {
+    border: 1px solid var(--border);
+    padding: 20px;
+    background: var(--bg2);
+  }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+
+  .feature h3 {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    color: var(--amber);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  .feature p {
+    font-size: 13px;
+    color: #7a9a7a;
+    margin: 0;
+  }
+
+  /* ─── INSTALL ─── */
+  .code-block {
+    background: #050a05;
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+
+  .code-block pre {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+    line-height: 1.6;
+  }
+
+  .prompt { color: var(--dim); }
+  .cmd    { color: var(--green); }
+  .comment { color: #3a5a3a; }
+
+  /* ─── CONTROLS TABLE ─── */
+  .controls {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .controls th {
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    text-align: left;
+    padding: 8px 16px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .controls td {
+    padding: 7px 16px 7px 0;
+    color: #aaccaa;
+    border-bottom: 1px solid #0d1a0d;
+  }
+
+  .key {
+    display: inline-block;
+    background: #1a2a1a;
+    border: 1px solid #2a4a2a;
+    padding: 1px 7px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--green);
+  }
+
+  /* ─── FLEET TABLE ─── */
+  .fleet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .fleet-table th {
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    text-align: left;
+    padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .fleet-table td {
+    padding: 8px 12px 8px 0;
+    color: #aaccaa;
+    border-bottom: 1px solid #0d1a0d;
+  }
+
+  .fleet-table tr:first-child td { color: var(--green); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--dim);
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
+  footer a { color: var(--dim); text-decoration: none; }
+  footer a:hover { color: var(--green); }
+
+  .cursor-line::after {
+    content: '█';
+    animation: blink 1s step-end infinite;
+    color: var(--green);
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── HERO ─── -->
+<div class="hero">
+  <div class="hero-logo glow-amber">🦞 HIGHLINER</div>
+  <div class="hero-sub">— MAINE LOBSTER FISHING SIMULATOR —</div>
+  <div class="hero-tagline">Bait. Set. Haul. <span class="blink">█</span></div>
+  <img src="assets/highliner-cover.png" alt="HIGHLINER cover art" class="cover-img">
+</div>
+
+<!-- ─── CTA ─── -->
+<div class="cta-bar">
+  <a class="btn btn-primary" href="https://github.com/ngmaloney/highliner-game/releases">DOWNLOAD</a>
+  <a class="btn btn-secondary" href="https://github.com/ngmaloney/highliner-game">VIEW SOURCE</a>
+</div>
+
+<!-- ─── ABOUT ─── -->
+<section>
+  <div class="section-label">&gt; ABOUT</div>
+  <h2>WHAT IS HIGHLINER?</h2>
+  <p>
+    HIGHLINER is a terminal-based Maine lobster fishing simulator. You start with an Eastern 22, 20 traps, 
+    and $500 in your pocket. Make it through the season, pay your bills, upgrade your boat, 
+    and work your way up to running a real operation.
+  </p>
+  <p>
+    NOAA marine forecasts, realistic trap economics, grade-based lobster pricing, random events, 
+    equipment upgrades, bycatch permits, and a fleet that goes from a 22-foot open boat to a 46-foot Wesmac. 
+    The Gulf don't care.
+  </p>
+</section>
+
+<!-- ─── SCREENSHOTS ─── -->
+<section>
+  <div class="section-label">&gt; SCREENSHOTS</div>
+  <h2>IN THE TERMINAL</h2>
+  <div class="screenshots">
+
+    <!-- Morning briefing -->
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <div class="terminal-title">highliner — morning briefing</div>
+      </div>
+      <div class="terminal-body">
+<pre><span class="t-amber t-bold">🦞 HIGHLINER  —  The Gulf Don't Care</span>                      <span class="t-dim">Day 7 | Lucky Stiff (Calvin Beal 34) | $4,210</span>
+ <span class="t-dim">[1/L] LOG   [2/M] MAINT   [3/D] DOCK   [4/W] WHARF</span>
+  <span class="t-dim">Cash:</span> <span class="t-green">$4,210.00</span>   <span class="t-dim">Fuel:</span> <span class="t-green">210/300 gal</span>   <span class="t-dim">Bait:</span> <span class="t-orange">85/500 lbs</span>   <span class="t-dim">Traps:</span> <span class="t-green">80/200</span>
+<span class="t-cyan">────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+
+<span class="t-cyan">── MORNING BRIEFING ─────────────────────────────────────────────────────────────────────────────</span>
+
+  <span class="t-cyan">NOAA MARINE FORECAST — EASTERN MAINE COASTAL WATERS</span>
+  <span class="t-green">Clear</span>
+  <span class="t-green">SW winds 12 to 15 kt with gusts up to 22 kt. Seas 2 to 3 ft. Wave Detail: SW 2 ft at 6 seconds and E 1 ft at 10 seconds.</span>
+
+<span class="t-dim">Vessel:</span> Lucky Stiff — Calvin Beal 34
+  <span class="t-green">Engine: 87%</span>  |  <span class="t-green">Zincs: 91%</span>  |  <span class="t-green">Hydraulics: 94%</span>
+
+<span class="t-cyan">── MARKET ───────────────────────────────────────────────────────────────────────────────────────</span>
+  <span class="t-dim">Chix $5.92   Quarters $6.67   Selects $7.92   Jumbos $10.67   Supers $14.17   Culls $3.92</span>
+  <span class="t-dim">Diesel $4.95/gal   Herring bait $0.65/lb</span>
+
+  ▶ <span class="t-white">ENTER to fish</span>   <span class="t-dim">[S] Stay in port   [W] Wharf   [M] Maintenance</span>
+
+ <span class="t-dim">Weather: Clear  12kt G22  Seas 2-3ft  Phase: MORNING PREP</span>                     <span class="t-dim">[Q] Save+Quit</span></pre>
+      </div>
+    </div>
+
+    <!-- Wharf -->
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <div class="terminal-title">highliner — wharf market</div>
+      </div>
+      <div class="terminal-body">
+<pre><span class="t-cyan">══ WHARF MARKET &amp; REPAIRS ══════════════════════════════════════════════════════════════════════</span>
+
+  <span class="t-dim">── SUPPLIES ──────────────────────────────────────────────────────────────────────────────────</span>
+  <span class="t-amber">►</span> <span class="t-white">Bait (50 lbs)</span>            <span class="t-green">$42</span>              Herring @ $0.65/lb — roughly one day on 40 traps
+    Bait (200 lbs)           <span class="t-green">$130</span>             Bulk herring @ $0.65/lb — 3-4 days supply
+    Fuel                     <span class="t-dim">need 90 gal</span>      Diesel $4.95/gal — need 90 gal to top off
+    Add Traps                <span class="t-green">$825</span>             +5 traps @ $165/ea — 80/200 on boat
+
+  <span class="t-dim">── REPAIRS ───────────────────────────────────────────────────────────────────────────────────</span>
+    Repair Engine            <span class="t-orange">87%</span>              87% → 100%  |  <span class="t-green">$520</span>
+    Replace Zincs            <span class="t-green">good</span>             100% → 100%  |  —
+    Repair Hydraulics        <span class="t-green">good</span>             94% → 100%  |  <span class="t-green">$180</span>
+
+  <span class="t-dim">── EQUIPMENT ─────────────────────────────────────────────────────────────────────────────────</span>
+    Radar                    <span class="t-dim">owned</span>            <span class="t-green">✓ fish all zones in fog</span>
+    GPS/Chartplotter         <span class="t-dim">owned</span>            <span class="t-green">✓ unlocks zones F and G</span>
+    VHF Radio                <span class="t-dim">owned</span>            <span class="t-green">✓ weather forecast + distress events</span>
+    Upgraded Hauler          <span class="t-green">$2,000</span>           slower hydraulic wear
+    Depth Sounder            <span class="t-green">$2,500</span>           full efficiency in deep zones (D-G)
+    Exhaust Heat Exchanger   <span class="t-green">$5,000</span>           reduces engine wear per haul
+    Crab Permit              <span class="t-green">$500</span>             keep and sell Jonah + rock crab
+    Groundfish Permit        <span class="t-green">$1,500</span>           keep and sell monkfish, cusk, halibut
+
+  <span class="t-dim">[↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs</span></pre>
+      </div>
+    </div>
+
+    <!-- Haul debrief -->
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <div class="terminal-title">highliner — end of day debrief</div>
+      </div>
+      <div class="terminal-body">
+<pre>  1600 — Back at the dock.
+<span class="t-cyan">────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span class="t-cyan">  DAY 7 DEBRIEF — Zone E (Outer Ledges) — Clear</span>
+
+  <span class="t-cyan">CATCH</span>
+    <span class="t-dim">Chix       34.2 lbs  @ $5.92/lb  =</span>  <span class="t-green">$202.46</span>
+    <span class="t-dim">Quarters   28.8 lbs  @ $6.67/lb  =</span>  <span class="t-green">$192.10</span>
+    <span class="t-dim">Selects    22.1 lbs  @ $7.92/lb  =</span>  <span class="t-green">$175.03</span>
+    <span class="t-dim">Jumbos      9.4 lbs  @ $10.67/lb =</span>  <span class="t-green">$100.30</span>
+    <span class="t-dim">TOTAL      94.5 lbs</span>                   <span class="t-green">$669.89</span>
+
+  <span class="t-cyan">BYCATCH</span>
+    <span class="t-dim">Jonah Crab  6.2 lbs  @ $0.75/lb  =</span>  <span class="t-green">$4.65</span>
+    <span class="t-dim">Monkfish    8.1 lbs  @ $4.00/lb  =</span>  <span class="t-green">$32.40</span>
+
+  <span class="t-dim">Fuel       18 gal × $4.95         -</span><span class="t-red">$89.10</span>
+  <span class="t-dim">Bait       200 lbs × $0.65        -</span><span class="t-red">$130.00</span>
+  <span class="t-dim">Dock fee                          -</span><span class="t-red">$20.00</span>
+
+  <span class="t-dim">NET</span>                                    <span class="t-green t-bold">$467.84</span>
+
+  <span class="t-dim italic">"Traps stacked solid. Buddy on the VHF said the same."</span></pre>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── FEATURES ─── -->
+<section>
+  <div class="section-label">&gt; FEATURES</div>
+  <h2>WHAT'S IN THE WATER</h2>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">🌊</div>
+      <h3>NOAA FORECASTS</h3>
+      <p>Real NOAA marine forecast format. Wind, seas, wave detail, visibility. Fog grounds you without radar.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🦞</div>
+      <h3>GRADE PRICING</h3>
+      <p>Chix, Quarters, Selects, Jumbos, Supers, Culls. Zone-based grade distribution. Daily price variation.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🗺</div>
+      <h3>7 ZONES</h3>
+      <p>Nearshore to deep water drop-off. Each zone has different steam times, yields, and trap loss rates.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚓</div>
+      <h3>FLEET PROGRESSION</h3>
+      <p>Eastern 22 → Calvin Beal 34 → Duffy 35 → Young Bros 40 → Wesmac 46. 800 traps at the top end.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎣</div>
+      <h3>BYCATCH PERMITS</h3>
+      <p>Crab permit for Jonah + rock crab. Groundfish permit (34ft+) for monkfish, cusk, and halibut jackpots at $18/lb.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <h3>RANDOM EVENTS</h3>
+      <p>Berried hens, square groupers, storms, ghost traps, boat in distress. Decisions with real consequences.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🔧</div>
+      <h3>GEAR MANAGEMENT</h3>
+      <p>Engine, zincs, hydraulics all wear with use. Ignore maintenance and you'll pay for it offshore.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🍺</div>
+      <h3>EVENING VICES</h3>
+      <p>Allen's Coffee Brandy. Six-pack of Natty. Scratch tickets. Three nights in a row and you're sleeping it off.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── INSTALL ─── -->
+<section>
+  <div class="section-label">&gt; INSTALL</div>
+  <h2>GET ON THE WATER</h2>
+  <p>Requires Go 1.21 or later.</p>
+
+  <div class="code-block">
+<pre><span class="comment"># Clone and run</span>
+<span class="prompt">$ </span><span class="cmd">git clone https://github.com/ngmaloney/highliner-game.git</span>
+<span class="prompt">$ </span><span class="cmd">cd highliner-game</span>
+<span class="prompt">$ </span><span class="cmd">make run</span>
+
+<span class="comment"># Or build the binary</span>
+<span class="prompt">$ </span><span class="cmd">make build</span>
+<span class="prompt">$ </span><span class="cmd">./highliner</span></pre>
+  </div>
+
+  <p>Pre-built binaries for macOS, Linux, and Windows available on the <a href="https://github.com/ngmaloney/highliner-game/releases" style="color: var(--green);">releases page</a>.</p>
+</section>
+
+<!-- ─── CONTROLS ─── -->
+<section>
+  <div class="section-label">&gt; CONTROLS</div>
+  <h2>KEY BINDINGS</h2>
+  <table class="controls">
+    <tr><th>KEY</th><th>ACTION</th></tr>
+    <tr><td><span class="key">Enter</span></td><td>Fish / confirm / buy</td></tr>
+    <tr><td><span class="key">S</span></td><td>Stay in port</td></tr>
+    <tr><td><span class="key">Space</span></td><td>Fast-forward haul animation</td></tr>
+    <tr><td><span class="key">1</span> <span class="key">L</span></td><td>Log screen</td></tr>
+    <tr><td><span class="key">2</span> <span class="key">M</span></td><td>Maintenance</td></tr>
+    <tr><td><span class="key">3</span> <span class="key">D</span></td><td>Dock / fleet status</td></tr>
+    <tr><td><span class="key">4</span> <span class="key">W</span></td><td>Wharf (buy gear)</td></tr>
+    <tr><td><span class="key">↑↓</span> <span class="key">J</span> <span class="key">K</span></td><td>Navigate / scroll</td></tr>
+    <tr><td><span class="key">Q</span></td><td>Save and quit</td></tr>
+  </table>
+</section>
+
+<!-- ─── FLEET ─── -->
+<section>
+  <div class="section-label">&gt; FLEET</div>
+  <h2>THE BOATS</h2>
+  <table class="fleet-table">
+    <tr><th>VESSEL</th><th>LENGTH</th><th>MAX TRAPS</th><th>COST</th></tr>
+    <tr><td>Eastern 22</td><td>22 ft</td><td>40</td><td>Free (starter)</td></tr>
+    <tr><td>Calvin Beal 34</td><td>34 ft</td><td>200</td><td>$45,000</td></tr>
+    <tr><td>Duffy 35</td><td>35 ft</td><td>400</td><td>$85,000</td></tr>
+    <tr><td>Young Bros 40</td><td>40 ft</td><td>600</td><td>$120,000</td></tr>
+    <tr><td>Wesmac 46</td><td>46 ft</td><td>800</td><td>$280,000</td></tr>
+  </table>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <p>HIGHLINER — A work in progress. The Gulf don't care.</p>
+  <p style="margin-top: 8px;"><a href="https://github.com/ngmaloney/highliner-game">github.com/ngmaloney/highliner-game</a></p>
+  <p style="margin-top: 20px; font-size: 10px; color: #2a4a2a;">Built with Go + Bubble Tea + Lip Gloss</p>
+</footer>
+
+</body>
+</html>
