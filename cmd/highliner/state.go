@@ -1004,6 +1004,9 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Price of lobster at the grocery store in Ellsworth is $24.99 a pound. We're getting $6. The math on that doesn't work in our favor.",
 		"Heard there's a whale been working the outer ledges. Good news: lobster run away from whales. Bad news: so does your gear.",
 		"Harold from the trap shop says wire mesh is backordered six weeks. Buy what you need now or you'll be knitting your own.",
+		"Bobby Torrey got his moose permit. Taking two weeks off. Said it like he won the lottery. Might as well have.",
+		"Kenny Leighton drew a moose permit third year in a row. Man puts in for every zone. Rest of us haven't seen a tag in ten years. Life ain't fair.",
+		"Heard Wayne Alley's taking the week off — finally drew his moose permit after twelve years. Boat's just sitting at the mooring. Can't blame him.",
 	}
 
 	var lines []string
