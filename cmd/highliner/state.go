@@ -334,6 +334,7 @@ type GameState struct {
 
 	HasSternman      bool `json:"has_sternman"`       // hired for today only, resets each morning
 	SternmanSkilled  bool `json:"sternman_skilled"`   // experienced vs greenhand
+	FlatlanderBonus  bool `json:"flatlander_bonus"`   // 20% price bump today (resets each morning)
 
 	PendingVandalism bool `json:"pending_vandalism"` // trap thief flagged — engine damage possible next morning
 }
@@ -812,9 +813,9 @@ var flavorPool = []flavorEntry{
 	},
 }
 
-// RollRandomEvent returns a random mid-haul event, or nil (85% chance of none)
+// RollRandomEvent returns a random mid-haul event, or nil (70% chance of none)
 func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
-	if rand.Float64() > 0.15 {
+	if rand.Float64() > 0.30 {
 		return nil
 	}
 	events := []RandomEvent{
@@ -866,6 +867,76 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 		KeyA:   "h", LabelA: "[H] Haul it, keep the catch",
 		KeyB:   "l", LabelB: "[L] Untangle and drop it back",
 	})
+
+	// ── Positive events ──────────────────────────────────────────────────────
+
+	// Hot set — one trap way over-loaded
+	events = append(events, RandomEvent{
+		Type:   EventHotSet,
+		Time:   "0930",
+		Desc:   "0930 — One trap came up absolutely loaded. Stacked to the brim. You pull it slow.",
+		KeyA:   "h", LabelA: "[H] Haul every last one",
+		KeyB:   "s", LabelB: "[S] Sort and toss the shorts",
+	})
+
+	// Flatlander wedding price bump
+	events = append(events, RandomEvent{
+		Type:   EventFlatlander,
+		Time:   "0845",
+		Desc:   "0845 — Co-op called on the radio. Some flatlander's having a lobster bake wedding in Bar Harbor. Paying 20% over market on everything today.",
+		KeyA:   "r", LabelA: "[R] Radio back — you'll bring the haul",
+		KeyB:   "i", LabelB: "[I] Ignore it, sell normal",
+	})
+
+	// Old-timer tip
+	events = append(events, RandomEvent{
+		Type:   EventOldTimer,
+		Time:   "0730",
+		Desc:   "0730 — Old Donnie Beal crackles in on channel 22. Says he's been watching the temp break. Tells you to drop deep on the east side today.",
+		KeyA:   "t", LabelA: "[T] Take his advice (+10% catch)",
+		KeyB:   "i", LabelB: "[I] Stick to your usual spots",
+	})
+
+	// Sunken trap windfall
+	events = append(events, RandomEvent{
+		Type:   EventSunkTrap,
+		Time:   "1015",
+		Desc:   "1015 — Depth sounder lit up. Pile of gear on the bottom — traps from last season, still loaded. Could grapple them up.",
+		KeyA:   "g", LabelA: "[G] Grapple them up (free traps + catch)",
+		KeyB:   "l", LabelB: "[L] Leave it",
+	})
+
+	// Gray market halibut (only if no groundfish permit)
+	if !gs.HasGroundfishPermit {
+		events = append(events, RandomEvent{
+			Type:   EventGrayMarketHalibut,
+			Time:   "1050",
+			Desc:   "1050 — Halibut in the trap. Fat one. No groundfish permit — you're not supposed to keep it.",
+			KeyA:   "k", LabelA: "[K] Keep it, sell it quiet ($150 cash)",
+			KeyB:   "t", LabelB: "[T] Throw it back",
+		})
+	}
+
+	// ── Negative events ──────────────────────────────────────────────────────
+
+	// Seal raid
+	events = append(events, RandomEvent{
+		Type:   EventSealRaid,
+		Time:   "0920",
+		Desc:   "0920 — Big gray seal working the gear ahead of you. Pulling lobsters right out of the traps as they come up.",
+		KeyA:   "s", LabelA: "[S] Bang the hull, try to scare it off",
+		KeyB:   "i", LabelB: "[I] Ignore it, keep hauling",
+	})
+
+	// Coast Guard permit check
+	events = append(events, RandomEvent{
+		Type:   EventCGCheck,
+		Time:   "1100",
+		Desc:   "1100 — Coast Guard vessel off the port bow. They're hailing you for a routine boarding.",
+		KeyA:   "h", LabelA: "[H] Heave to and cooperate",
+		KeyB:   "r", LabelB: "[R] Radio that you're hauling, ask for delay",
+	})
+
 	e := events[rand.Intn(len(events))]
 	return &e
 }

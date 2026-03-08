@@ -34,6 +34,15 @@ const (
 	EventGhostTrap
 	EventStormComing
 	EventNeighborTrap
+	// Positive events
+	EventHotSet
+	EventFlatlander
+	EventOldTimer
+	EventSunkTrap
+	EventGrayMarketHalibut
+	// Negative events
+	EventSealRaid
+	EventCGCheck
 )
 
 type RandomEvent struct {

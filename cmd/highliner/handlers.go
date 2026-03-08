@@ -240,6 +240,7 @@ func (m *model) doNextDay() {
 	m.weather = rollWeather()
 	m.gs.HasSternman = false
 	m.gs.SternmanSkilled = false
+	m.gs.FlatlanderBonus = false
 	m.haul = nil
 	m.screen = ScreenLog
 	m.addLog("")
@@ -843,7 +844,6 @@ func (m *model) resolveEvent(key string) {
 
 	case EventNeighborTrap:
 		if key == ev.KeyA {
-			// Steal the catch — bonus lbs, but mark pending vandalism (30% chance he finds out)
 			bonus := 5.0 + rand.Float64()*12.0
 			m.gs.Freezer += bonus
 			m.gs.TotalCatch += bonus
@@ -854,6 +854,103 @@ func (m *model) resolveEvent(key string) {
 			}
 		} else {
 			m.addLog("  You untangle the warp and drop it back. Not your gear, not your problem.")
+		}
+
+	case EventHotSet:
+		if key == ev.KeyA {
+			bonus := 18.0 + rand.Float64()*22.0
+			m.gs.Freezer += bonus
+			m.gs.TotalCatch += bonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Pulled every last one. %.0f extra lbs. Good set.", bonus))
+		} else {
+			bonus := 10.0 + rand.Float64()*10.0
+			m.gs.Freezer += bonus
+			m.gs.TotalCatch += bonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Sorted careful. %.0f lbs of keepers, clean and legal.", bonus))
+		}
+
+	case EventFlatlander:
+		if key == ev.KeyA {
+			// Mark a price multiplier for today's sell — store on GameState
+			m.gs.FlatlanderBonus = true
+			m.addLogStyled(styleLogGreen, "  You radio back. They want everything you've got. 20% over market today.")
+		} else {
+			m.addLog(styleDim("  You keep hauling. Their problem, not yours."))
+		}
+
+	case EventOldTimer:
+		if key == ev.KeyA {
+			bonus := m.gs.Freezer * 0.10
+			if bonus < 5 { bonus = 5 }
+			m.gs.Freezer += bonus
+			m.gs.TotalCatch += bonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  You work the east side. Old Donnie was right. %.0f extra lbs.", bonus))
+		} else {
+			m.addLog(styleDim("  You stick to your spots. Donnie's probably half-asleep anyway."))
+		}
+
+	case EventSunkTrap:
+		if key == ev.KeyA {
+			recovered := 1 + rand.Intn(3)
+			bonus := 8.0 + rand.Float64()*15.0
+			m.gs.Traps += recovered
+			boat := BoatModels[m.gs.BoatName]
+			if m.gs.Traps > boat.MaxTraps {
+				m.gs.Traps = boat.MaxTraps
+			}
+			m.gs.Freezer += bonus
+			m.gs.TotalCatch += bonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Grappled up %d traps, still serviceable. %.0f lbs of lobster inside. Good find.", recovered, bonus))
+		} else {
+			m.addLog(styleDim("  You leave it. Not your gear, not your problem."))
+		}
+
+	case EventGrayMarketHalibut:
+		if key == ev.KeyA {
+			cashBonus := 130.0 + rand.Float64()*40.0
+			m.gs.Money += cashBonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  You wrap it in burlap and slide it under the console. $%.0f cash when you get back.", cashBonus))
+			if rand.Float64() < 0.08 {
+				m.addLogStyled(styleLogDanger, "  Coast Guard was at the dock when you came in. They saw the fish.")
+				fine := 400.0 + rand.Float64()*200.0
+				m.gs.Money -= fine
+				m.addLogStyled(styleLogDanger, fmt.Sprintf("  $%.0f fine. Not worth it.", fine))
+			}
+		} else {
+			m.addLog(styleDim("  You slide it back over the rail. Regulations are regulations."))
+		}
+
+	case EventSealRaid:
+		if key == ev.KeyA {
+			if rand.Float64() < 0.50 {
+				lost := 3.0 + rand.Float64()*6.0
+				m.gs.Freezer = math.Max(0, m.gs.Freezer-lost)
+				m.addLogStyled(styleLogWarn, fmt.Sprintf("  Seal backed off eventually. Lost maybe %.0f lbs before it went.", lost))
+			} else {
+				m.addLogStyled(styleLogGreen, "  Scared it off. Gear looks clean. Lucky.")
+			}
+		} else {
+			lost := 8.0 + rand.Float64()*12.0
+			m.gs.Freezer = math.Max(0, m.gs.Freezer-lost)
+			m.addLogStyled(styleLogWarn, fmt.Sprintf("  Seal worked the whole string. Picked off %.0f lbs before you finished.", lost))
+		}
+
+	case EventCGCheck:
+		if key == ev.KeyA || key == ev.KeyB {
+			hasMissingPermit := false
+			var issues []string
+			// Check if they're in crab territory without permit
+			if !m.gs.HasCrabPermit && m.gs.HotCrabZone != "" {
+				hasMissingPermit = true
+				issues = append(issues, "no crab permit")
+			}
+			if hasMissingPermit {
+				fine := 300.0 + rand.Float64()*200.0
+				m.gs.Money -= fine
+				m.addLogStyled(styleLogDanger, fmt.Sprintf("  Boarding officer found issues: %s. $%.0f fine.", strings.Join(issues, ", "), fine))
+			} else {
+				m.addLogStyled(styleLogGreen, "  Papers in order. They wave you off. Back to hauling.")
+			}
 		}
 	}
 
@@ -883,13 +980,23 @@ func (m *model) doSell() {
 		revenue := 0.0
 		m.addLog("")
 		m.addLog(m.logDivider(styleTitle, "CO-OP SALE"))
+		if m.gs.FlatlanderBonus {
+			m.addLogStyled(styleLogGreen, "  ★ Flatlander wedding premium — 20% over market today")
+		}
 		if m.haul != nil && len(m.haul.Grades) > 0 {
 			for _, g := range m.haul.Grades {
-				m.addLog(fmt.Sprintf("  %-10s %.1f lbs @ $%.2f/lb", g.Name, g.Lbs, g.Price))
-				revenue += g.Lbs * g.Price
+				price := g.Price
+				if m.gs.FlatlanderBonus {
+					price *= 1.20
+				}
+				m.addLog(fmt.Sprintf("  %-10s %.1f lbs @ $%.2f/lb", g.Name, g.Lbs, price))
+				revenue += g.Lbs * price
 			}
 		} else {
 			flatPrice := 5.75
+			if m.gs.FlatlanderBonus {
+				flatPrice *= 1.20
+			}
 			revenue = catchToSell * flatPrice
 			m.addLog(fmt.Sprintf("  %.1f lbs @ $%.2f/lb (market avg)", catchToSell, flatPrice))
 		}
