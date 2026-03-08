@@ -325,7 +325,8 @@ type GameState struct {
 	HasRadar      bool `json:"has_radar"`       // fog: unlocks all zones
 	HasGPS        bool `json:"has_gps"`         // unlocks zones F/G
 	HasVHF        bool `json:"has_vhf"`         // weather forecast + distress events
-	HasUpgHauler  bool `json:"has_upg_hauler"`  // slower hydraulic wear
+	HasUpgHauler  bool `json:"has_upg_hauler"`  // +15% yield, slower hydraulic wear
+	HasDavit      bool `json:"has_davit"`        // +15% yield — swings pots aboard faster
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 	HasDeckLights bool `json:"has_deck_lights"` // early departure, +10% catch
@@ -510,6 +511,14 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		zone.Multiplier *
 		weather.Modifier *
 		luck
+
+	// Hydraulic hauler + davit both increase how many pots you can work per trip
+	if gs.HasUpgHauler {
+		catchLbs *= 1.15
+	}
+	if gs.HasDavit {
+		catchLbs *= 1.15
+	}
 
 	if catchLbs < 0 {
 		catchLbs = 0
