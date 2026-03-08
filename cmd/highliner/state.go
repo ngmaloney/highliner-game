@@ -984,8 +984,9 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 	events = append(events, RandomEvent{
 		Type:   EventCoastGuardBoarding,
 		Time:   "0930",
-		Desc:   "0930 — Coast Guard Aids to Navigation boat off your stern. They're coming alongside. Routine safety inspection — extinguisher, life raft, flares. $500 per violation.",
-		KeyA:   "k", LabelA: "[K] Let them aboard (you have no choice)",
+		Desc:   "0930 — Coast Guard Aids to Navigation boat off your stern. Hailing you on 16. Safety inspection — extinguisher, life raft, flares. $500 per violation.",
+		KeyA:   "k", LabelA: "[K] Heave to, let them aboard",
+		KeyB:   "r", LabelB: "[R] Keep hauling, pretend you don't hear them (40% they break off)",
 	})
 
 	events = append(events, RandomEvent{

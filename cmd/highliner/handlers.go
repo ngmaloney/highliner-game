@@ -1071,25 +1071,52 @@ func (m *model) resolveEvent(key string) {
 		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Counted %.0f lbs out of one trap. Bait was perfect. Wish every trap fished like that.", bonus))
 
 	case EventCoastGuardBoarding:
-		m.addLog(styleDim("  Officer checks extinguisher, life raft, flares..."))
-		fine := 0.0
-		var violations []string
-		if !m.gs.HasFireExtinguisher {
-			fine += 500
-			violations = append(violations, "no fire extinguisher")
-		}
-		if !m.gs.HasLifeRaft {
-			fine += 500
-			violations = append(violations, "no life raft")
-		}
-		if len(violations) == 0 {
-			m.addLogStyled(styleLogGreen, "  All safety gear present and accounted for.")
-			m.addLog(styleDim("  \"Good to see somebody's running right out here.\" They shove off."))
+		if key == ev.KeyB {
+			// Ignore them — 40% they break off, 60% they catch up and fine double
+			if rand.Float64() < 0.40 {
+				m.addLog(styleDim("  You keep hauling. After a few minutes their boat peels off."))
+				m.addLogStyled(styleLogGreen, "  They had bigger fish to fry. Got away with it.")
+			} else {
+				m.addLogStyled(styleDanger, "  They're not letting it go. Blue lights, air horn — they come alongside anyway.")
+				m.addLog(styleDim("  Officer is not amused. Double fines for failure to heave to."))
+				fine := 0.0
+				var violations []string
+				if !m.gs.HasFireExtinguisher {
+					fine += 1000
+					violations = append(violations, "no fire extinguisher")
+				}
+				if !m.gs.HasLifeRaft {
+					fine += 1000
+					violations = append(violations, "no life raft")
+				}
+				fine += 500 // failure to heave to
+				violations = append(violations, "failure to heave to")
+				m.gs.Money -= fine
+				m.addLogStyled(styleDanger, fmt.Sprintf("  Violations: %s", strings.Join(violations, ", ")))
+				m.addLogStyled(styleDanger, fmt.Sprintf("  $%.0f total. Should've just stopped.", fine))
+			}
 		} else {
-			m.gs.Money -= fine
-			m.addLogStyled(styleDanger, fmt.Sprintf("  Violations: %s", strings.Join(violations, ", ")))
-			m.addLogStyled(styleDanger, fmt.Sprintf("  $%.0f fine. Get it squared away.", fine))
-			m.addLog(styleDim("  Officer hands you the citation and steps back over the rail."))
+			// Comply — standard inspection
+			m.addLog(styleDim("  Officer checks extinguisher, life raft, flares..."))
+			fine := 0.0
+			var violations []string
+			if !m.gs.HasFireExtinguisher {
+				fine += 500
+				violations = append(violations, "no fire extinguisher")
+			}
+			if !m.gs.HasLifeRaft {
+				fine += 500
+				violations = append(violations, "no life raft")
+			}
+			if len(violations) == 0 {
+				m.addLogStyled(styleLogGreen, "  All safety gear present and accounted for.")
+				m.addLog(styleDim("  \"Good to see somebody's running right out here.\" They shove off."))
+			} else {
+				m.gs.Money -= fine
+				m.addLogStyled(styleDanger, fmt.Sprintf("  Violations: %s", strings.Join(violations, ", ")))
+				m.addLogStyled(styleDanger, fmt.Sprintf("  $%.0f fine. Get it squared away.", fine))
+				m.addLog(styleDim("  Officer hands you the citation and steps back over the rail."))
+			}
 		}
 
 	case EventEngineFire:
