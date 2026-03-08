@@ -556,7 +556,7 @@ func (m model) viewChartContent() string {
 	b.WriteString("\n")
 
 	// column widths (plain chars): Z=1 Name=22 Steam=5 Fuel=7 Lobster=7 Crab=6 Fish=6 Notes
-	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-10s  %-6s  %-6s  %-8s  %s",
+	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-6s  %-10s  %-6s  %-6s  %-8s  %s",
 		"Z", "Name", "Steam", "Fuel", "Lobster", "Crab", "Cusk", "Monk", "Halibut", "Notes")
 	b.WriteString(styleLogInfo.Render(hdr) + "\n")
 	b.WriteString("  " + styleDim(strings.Repeat("─", len(hdr)-2)) + "\n")
@@ -565,7 +565,18 @@ func (m model) viewChartContent() string {
 		fuelBurn := z.SteamHours * boat.FuelBurnRate
 
 		// Catchable % estimates per zone
-		lobsterPct := int(z.Multiplier * 100)
+		mult := z.Multiplier * 100
+		lobsterStr := "poor"
+		switch {
+		case mult >= 140:
+			lobsterStr = "rich"
+		case mult >= 120:
+			lobsterStr = "great"
+		case mult >= 100:
+			lobsterStr = "good"
+		case mult >= 85:
+			lobsterStr = "fair"
+		}
 
 		crabFactor := 0.5 + (z.SteamHours/10.0)*0.8
 		if m.gs.HotCrabZone == z.ID {
@@ -610,8 +621,8 @@ func (m model) viewChartContent() string {
 		}
 
 		// Build the plain row, then color the whole thing
-		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-10s  %-6s  %-6s  %-8s  %s",
-			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterPct, crabStr, cuskStr, monkStr, haliStr, notes)
+		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %-6s  %-10s  %-6s  %-6s  %-8s  %s",
+			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterStr, crabStr, cuskStr, monkStr, haliStr, notes)
 
 		var rowColor lipgloss.Color
 		switch {
