@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 22 {
+			if m.marketCursor < 21 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1257,31 +1257,18 @@ func (m *model) doBuy() {
 			m.gs.HasVHF = true
 			m.confirmBuy = "VHF installed. You can hear channel 16 now."
 		}},
-		{"Hydraulic Pot Hauler", 2000, func() {
+		{"Hydraulic Hauler & Davit", 3500, func() {
 			if m.gs.HasUpgHauler {
 				m.confirmBuy = "Already installed."
 				return
 			}
-			if m.gs.Money < 2000 {
-				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(2000), moneyStr(2000-m.gs.Money))
+			if m.gs.Money < 3500 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(3500), moneyStr(3500-m.gs.Money))
 				return
 			}
-			m.gs.Money -= 2000
+			m.gs.Money -= 3500
 			m.gs.HasUpgHauler = true
-			m.confirmBuy = "Hydraulic hauler installed. Haul more, work less."
-		}},
-		{"Davit", 1800, func() {
-			if m.gs.HasDavit {
-				m.confirmBuy = "Already installed."
-				return
-			}
-			if m.gs.Money < 1800 {
-				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1800), moneyStr(1800-m.gs.Money))
-				return
-			}
-			m.gs.Money -= 1800
-			m.gs.HasDavit = true
-			m.confirmBuy = "Davit mounted. Your back will thank you."
+			m.confirmBuy = "Hauler and davit installed. You'll notice the difference on the first string."
 		}},
 		{"Depth Sounder", 2500, func() {
 			if m.gs.HasDepthSound {
@@ -1406,7 +1393,6 @@ func (m *model) doBuy() {
 			m.gs.HasGPS = false
 			m.gs.HasVHF = false
 			m.gs.HasUpgHauler = false
-			m.gs.HasDavit = false
 			m.gs.HasDepthSound = false
 			m.gs.HasExhaustHX = false
 			m.gs.HasDeckLights = false

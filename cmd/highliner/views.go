@@ -344,27 +344,16 @@ func (m model) viewMarketContent() string {
 			}
 			return "distress events + free tow from Dirty Ernie"
 		}()},
-		{"Hydraulic Pot Hauler", func() string {
+		{"Hydraulic Hauler & Davit", func() string {
 			if m.gs.HasUpgHauler {
 				return "owned"
 			}
-			return "$2,000"
+			return "$3,500"
 		}(), func() string {
 			if m.gs.HasUpgHauler {
-				return "✓ +15% yield, slower hydraulic wear"
+				return "✓ +30% yield, slower hydraulic wear"
 			}
-			return "+15% yield — haul more pots, less wear on the pump"
-		}()},
-		{"Davit", func() string {
-			if m.gs.HasDavit {
-				return "owned"
-			}
-			return "$1,800"
-		}(), func() string {
-			if m.gs.HasDavit {
-				return "✓ +15% yield — swings pots aboard without killing your back"
-			}
-			return "+15% yield — swing pots aboard faster, pairs with hauler"
+			return "+30% yield — haul faster, swing pots aboard, less wear on the pump"
 		}()},
 		{"Depth Sounder", func() string {
 			if m.gs.HasDepthSound {
