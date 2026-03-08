@@ -898,7 +898,7 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 	events = append(events, RandomEvent{
 		Type:   EventOldTimer,
 		Time:   "0730",
-		Desc:   "0730 — Old Donnie Beal crackles in on channel 22. Says he's been watching the temp break. Tells you to drop deep on the east side today.",
+		Desc:   "0730 — Old Donnie Beal crackles in on channel 68. Says he's been watching the temp break. Tells you to drop deep on the east side today.",
 		KeyA:   "t", LabelA: "[T] Take his advice (+10% catch)",
 		KeyB:   "i", LabelB: "[I] Stick to your usual spots",
 	})
