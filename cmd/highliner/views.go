@@ -556,8 +556,8 @@ func (m model) viewChartContent() string {
 	b.WriteString("\n")
 
 	// column widths (plain chars): Z=1 Name=22 Steam=5 Fuel=7 Lobster=7 Crab=6 Fish=6 Notes
-	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-10s  %-18s  %s",
-		"Z", "Name", "Steam", "Fuel", "Lobster", "Crab", "Fish", "Notes")
+	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-10s  %-6s  %-6s  %-8s  %s",
+		"Z", "Name", "Steam", "Fuel", "Lobster", "Crab", "Cusk", "Monk", "Halibut", "Notes")
 	b.WriteString(styleLogInfo.Render(hdr) + "\n")
 	b.WriteString("  " + styleDim(strings.Repeat("─", len(hdr)-2)) + "\n")
 
@@ -575,18 +575,17 @@ func (m model) viewChartContent() string {
 		rockChance  := math.Min(0.65, 0.18*crabFactor)
 		crabPct     := int((jonahChance + rockChance*0.5) * 100) // weighted by frequency
 
-		// Fish chance: same formula as simulateHaul (cusk + monk + halibut, mutually exclusive)
-		fishStr := "-"
+		// Per-species groundfish odds — same formula as simulateHaul
+		cuskStr, monkStr, haliStr := "-", "-", "-"
 		if z.SteamHours >= 2.0 {
 			sh := z.SteamHours
-			cuskChance  := math.Min(0.35, 0.06*sh)
-			monkChance  := math.Min(0.40, 0.04*sh)
-			haliChance  := math.Max(0, (sh-5.0)*0.025)
-			totalFish   := int((cuskChance + monkChance + haliChance) * 100)
+			cuskChance := math.Min(0.35, 0.06*sh)
+			monkChance := math.Min(0.40, 0.04*sh)
+			haliChance := math.Max(0, (sh-5.0)*0.025)
+			cuskStr = fmt.Sprintf("~%.0f%%", cuskChance*100)
+			monkStr = fmt.Sprintf("~%.0f%%", monkChance*100)
 			if haliChance > 0 {
-				fishStr = fmt.Sprintf("~%d%% (hal.~%.0f%%)", totalFish, haliChance*100)
-			} else {
-				fishStr = fmt.Sprintf("~%d%%", totalFish)
+				haliStr = fmt.Sprintf("~%.0f%%", haliChance*100)
 			}
 		}
 
@@ -598,7 +597,12 @@ func (m model) viewChartContent() string {
 		// Access notes (plain)
 		notes := ""
 		if m.zoneBlocked(i) {
-			notes = m.zoneBlockReason(i)
+			// Shorten block reasons to fit 120-char terminal
+			reason := m.zoneBlockReason(i)
+			if len(reason) > 22 {
+				reason = reason[:22]
+			}
+			notes = reason
 		} else if z.ID == "F" || z.ID == "G" {
 			notes = "far offshore"
 		} else if z.ID == "E" {
@@ -606,8 +610,8 @@ func (m model) viewChartContent() string {
 		}
 
 		// Build the plain row, then color the whole thing
-		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-10s  %-18s  %s",
-			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterPct, crabStr, fishStr, notes)
+		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-10s  %-6s  %-6s  %-8s  %s",
+			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterPct, crabStr, cuskStr, monkStr, haliStr, notes)
 
 		var rowColor lipgloss.Color
 		switch {
