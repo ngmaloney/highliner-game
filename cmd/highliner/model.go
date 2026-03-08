@@ -1046,6 +1046,10 @@ func (m *model) resolveEvent(key string) {
 	if ev == nil {
 		return
 	}
+	// Ignore any key that isn't one of the two valid choices
+	if key != ev.KeyA && key != ev.KeyB {
+		return
+	}
 	result := m.eventHaulResult
 
 	m.addLog("")
