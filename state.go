@@ -181,6 +181,10 @@ type GameState struct {
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // slower hydraulic wear
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
+
+	// Licenses
+	HasCrabPermit       bool `json:"has_crab_permit"`       // keep/sell Jonah + rock crab
+	HasGroundfishPermit bool `json:"has_groundfish_permit"` // keep/sell monkfish + sea bass
 }
 
 func newGame() *GameState {
@@ -253,6 +257,11 @@ type HaulResult struct {
 	HydraulicsDmg float64
 	HullDmg       float64
 	TrapsLost     int
+	// Bycatch
+	JonahCrabLbs    float64
+	RockCrabLbs     float64
+	GroundfishName  string
+	GroundfishLbs   float64
 }
 
 // RollDailyPrices generates co-op dock prices for the day
@@ -407,6 +416,34 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		}
 	}
 
+	// Bycatch
+	var jonahLbs, rockLbs, groundfishLbs float64
+	var groundfishName string
+
+	if gs.HasCrabPermit {
+		// Jonah crabs: 50% chance per haul, 3-12 lbs
+		if rand.Float64() < 0.50 {
+			jonahLbs = 3.0 + rand.Float64()*9.0
+		}
+		// Rock crabs: 25% chance, 2-6 lbs
+		if rand.Float64() < 0.25 {
+			rockLbs = 2.0 + rand.Float64()*4.0
+		}
+	}
+
+	if gs.HasGroundfishPermit && zone.SteamHours >= 2.0 {
+		// Groundfish: 20% chance in zones B+, monkfish or sea bass
+		if rand.Float64() < 0.20 {
+			if rand.Float64() < 0.6 {
+				groundfishName = "Monkfish"
+				groundfishLbs = 5.0 + rand.Float64()*20.0 // 5-25 lbs tail weight
+			} else {
+				groundfishName = "Black Sea Bass"
+				groundfishLbs = 3.0 + rand.Float64()*12.0
+			}
+		}
+	}
+
 	return HaulResult{
 		CatchLbs:      catchLbs,
 		Revenue:       revenue,
@@ -418,6 +455,10 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		HydraulicsDmg: hydDmg,
 		HullDmg:       hullDmg,
 		TrapsLost:     trapsLost,
+		JonahCrabLbs:  jonahLbs,
+		RockCrabLbs:   rockLbs,
+		GroundfishName: groundfishName,
+		GroundfishLbs: groundfishLbs,
 	}
 }
 
@@ -526,13 +567,7 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 			KeyA:   "k", LabelA: "[K] Haul it aboard (+$2,500)",
 			KeyB:   "r", LabelB: "[R] Radio the Coast Guard",
 		},
-		{
-			Type:   EventJonahCrabs,
-			Time:   "1115",
-			Desc:   "1115 — Traps are packed with Jonah crabs today. Legal to keep. You could bring these in.",
-			KeyA:   "k", LabelA: "[K] Keep them (extra cash)",
-			KeyB:   "t", LabelB: "[T] Toss back (not worth the hassle)",
-		},
+
 		{
 			Type:   EventGhostTrap,
 			Time:   "1200",

@@ -387,6 +387,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "pgdn":
 					m.altVP.HalfViewDown()
 					return m, nil
+				case "b":
+					if m.screen == ScreenDock {
+						if m.gs.HasCrabPermit {
+							m.confirmBuy = "Already licensed for crab."
+						} else if m.gs.Money < 500 {
+							m.confirmBuy = fmt.Sprintf("Need $500 — short by %s", moneyStr(500-m.gs.Money))
+						} else {
+							m.gs.Money -= 500
+							m.gs.HasCrabPermit = true
+							m.confirmBuy = "Crab permit issued. Jonah and rock crabs are yours to keep."
+						}
+						m.syncAltViewport()
+						return m, nil
+					}
+				case "g":
+					if m.screen == ScreenDock {
+						if m.gs.HasGroundfishPermit {
+							m.confirmBuy = "Already licensed for groundfish."
+						} else if m.gs.Money < 1500 {
+							m.confirmBuy = fmt.Sprintf("Need $1,500 — short by %s", moneyStr(1500-m.gs.Money))
+						} else {
+							m.gs.Money -= 1500
+							m.gs.HasGroundfishPermit = true
+							m.confirmBuy = "Groundfish permit issued. Monkfish and sea bass are yours to keep."
+						}
+						m.syncAltViewport()
+						return m, nil
+					}
 				}
 			}
 			return m.handlePhaseKey(msg.String())
@@ -768,6 +796,37 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 		addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", g.Name, g.Lbs, g.Price, moneyStr(gross)))
 	}
 	addQ(fmt.Sprintf("    %-10s %5.1f lbs%s%s", "TOTAL", result.CatchLbs, strings.Repeat(" ", 16), moneyStr(totalGross)))
+
+	// Bycatch section
+	jonahPrice := 0.75
+	rockPrice := 0.35
+	monkfishPrice := 4.00
+	seabassPrice := 3.50
+	bycatchTotal := 0.0
+	if result.JonahCrabLbs > 0 || result.RockCrabLbs > 0 || result.GroundfishLbs > 0 {
+		addQ("")
+		addQS(styleLogInfo, "  BYCATCH")
+		if result.JonahCrabLbs > 0 {
+			gross := result.JonahCrabLbs * jonahPrice
+			bycatchTotal += gross
+			addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", "Jonah Crab", result.JonahCrabLbs, jonahPrice, moneyStr(gross)))
+		}
+		if result.RockCrabLbs > 0 {
+			gross := result.RockCrabLbs * rockPrice
+			bycatchTotal += gross
+			addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", "Rock Crab", result.RockCrabLbs, rockPrice, moneyStr(gross)))
+		}
+		if result.GroundfishLbs > 0 {
+			price := monkfishPrice
+			if result.GroundfishName == "Black Sea Bass" {
+				price = seabassPrice
+			}
+			gross := result.GroundfishLbs * price
+			bycatchTotal += gross
+			addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", result.GroundfishName, result.GroundfishLbs, price, moneyStr(gross)))
+		}
+		totalGross += bycatchTotal
+	}
 	addQ("")
 
 	fuelCost := float64(result.FuelUsed) * m.gs.DieselPrice
@@ -841,6 +900,17 @@ func (m *model) doHaul() {
 		m.queueLogStyled(styleLogDanger, "1045 — ⚠ Eastern 22 taking a beating in these swells.")
 		hullDmg := result.HullDmg * 2.5
 		m.gs.Engine = math.Max(0, m.gs.Engine-hullDmg)
+	}
+	// Bycatch log lines
+	if result.JonahCrabLbs > 0 {
+		m.queueLog(fmt.Sprintf("1050 — Jonah crabs in the traps. Keeping %.0f lbs.", result.JonahCrabLbs))
+	} else if !m.gs.HasCrabPermit && rand.Float64() < 0.25 {
+		m.queueLog("1050 — Pulled some Jonah crabs. No crab permit — back they go.")
+	}
+	if result.GroundfishLbs > 0 {
+		m.queueLogStyled(styleLogGreen, fmt.Sprintf("1055 — %s in the trap! %.0f lbs. Keeping it.", result.GroundfishName, result.GroundfishLbs))
+	} else if !m.gs.HasGroundfishPermit && rand.Float64() < 0.12 {
+		m.queueLogStyled(styleLogWarn, "1055 — Pulled a nice monkfish. No groundfish permit — back it goes.")
 	}
 	if result.TrapsLost > 0 {
 		trapCost := float64(result.TrapsLost) * BoatModels[m.gs.BoatName].TrapCost
@@ -1084,6 +1154,20 @@ func (m *model) doSell() {
 		}
 		m.addLogStyled(styleLogRevenue, fmt.Sprintf("  Net: %s", moneyStr(net)))
 
+		// Add bycatch revenue
+		if m.haul != nil {
+			jonahRev := m.haul.JonahCrabLbs * 0.75
+			rockRev := m.haul.RockCrabLbs * 0.35
+			groundfishRev := 0.0
+			if m.haul.GroundfishName == "Monkfish" {
+				groundfishRev = m.haul.GroundfishLbs * 4.00
+			} else if m.haul.GroundfishName == "Black Sea Bass" {
+				groundfishRev = m.haul.GroundfishLbs * 3.50
+			}
+			bycatchRev := jonahRev + rockRev + groundfishRev
+			net += bycatchRev
+			revenue += bycatchRev
+		}
 		m.gs.Money += net
 		m.gs.Freezer = 0
 		m.gs.TotalRevenue += revenue
@@ -1545,6 +1629,24 @@ func (m model) viewDockContent() string {
 	b.WriteString(fmt.Sprintf("  %s %d days\n", label("Days out:", 12), m.gs.Day))
 	b.WriteString(fmt.Sprintf("  %s %.0f lbs\n", label("Total catch:", 12), m.gs.TotalCatch))
 	b.WriteString(fmt.Sprintf("  %s %s\n\n", label("Revenue:", 12), styleValue.Render(moneyStr(m.gs.TotalRevenue))))
+
+	b.WriteString(subHeader("LICENSES", m.width))
+	crabStatus := styleDim("not licensed — Jonah/rock crabs are throwbacks")
+	if m.gs.HasCrabPermit {
+		crabStatus = styleGood.Render("✓ licensed")
+	}
+	groundfishStatus := styleDim("not licensed — monkfish/sea bass are throwbacks")
+	if m.gs.HasGroundfishPermit {
+		groundfishStatus = styleGood.Render("✓ licensed")
+	}
+	b.WriteString(fmt.Sprintf("  %-22s %s\n", styleLabel.Render("Crab Permit ($500):"), crabStatus))
+	b.WriteString(fmt.Sprintf("  %-22s %s\n\n", styleLabel.Render("Groundfish Permit ($1,500):"), groundfishStatus))
+	if !m.gs.HasCrabPermit || !m.gs.HasGroundfishPermit {
+		b.WriteString(styleDim("  Buy licenses at the harbormaster's office: [B]uy Crab / [G]roundfish\n\n"))
+	}
+	if m.confirmBuy != "" && m.screen == ScreenDock {
+		b.WriteString(styleLogRevenue.Render(fmt.Sprintf("  ✓ %s", m.confirmBuy)) + "\n\n")
+	}
 
 	b.WriteString(subHeader("FLEET PROGRESSION", m.width))
 	fleetOrder := []string{"Eastern 22", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
