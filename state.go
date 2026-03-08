@@ -515,27 +515,35 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	var jonahLbs, rockLbs, groundfishLbs float64
 	var groundfishName string
 
+	traps := float64(gs.Traps)
+
 	if gs.HasCrabPermit {
-		// Jonah crabs: 50% chance per haul, 3-12 lbs
+		// Jonah crabs: ~0.03–0.08 lbs per trap, 50% hauls
 		if rand.Float64() < 0.50 {
-			jonahLbs = 3.0 + rand.Float64()*9.0
+			jonahLbs = traps * (0.03 + rand.Float64()*0.05)
 		}
-		// Rock crabs: 25% chance, 2-6 lbs
+		// Rock crabs: ~0.01–0.03 lbs per trap, 25% hauls
 		if rand.Float64() < 0.25 {
-			rockLbs = 2.0 + rand.Float64()*4.0
+			rockLbs = traps * (0.01 + rand.Float64()*0.02)
 		}
 	}
 
 	if gs.HasGroundfishPermit && zone.SteamHours >= 2.0 {
-		// Groundfish: 20% chance in zones B+, monkfish or sea bass
+		// Groundfish scales loosely with traps — more gear = more encounters
+		// Cusk/Hake: 25% chance, ~0.02–0.06 lbs/trap
+		if rand.Float64() < 0.25 {
+			groundfishName = "Cusk/Hake"
+			groundfishLbs = traps * (0.02 + rand.Float64()*0.04)
+		}
+		// Monkfish: 20% chance, ~0.01–0.05 lbs/trap (tail weight)
 		if rand.Float64() < 0.20 {
-			if rand.Float64() < 0.6 {
-				groundfishName = "Monkfish"
-				groundfishLbs = 5.0 + rand.Float64()*20.0 // 5-25 lbs tail weight
-			} else {
-				groundfishName = "Black Sea Bass"
-				groundfishLbs = 3.0 + rand.Float64()*12.0
-			}
+			groundfishName = "Monkfish"
+			groundfishLbs = traps * (0.01 + rand.Float64()*0.04)
+		}
+		// Halibut: rare jackpot, 2% chance, flat 8–30 lbs (one fish)
+		if rand.Float64() < 0.02 {
+			groundfishName = "Halibut"
+			groundfishLbs = 8.0 + rand.Float64()*22.0
 		}
 	}
 

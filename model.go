@@ -800,32 +800,31 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 	addQ(fmt.Sprintf("    %-10s %5.1f lbs%s%s", "TOTAL", result.CatchLbs, strings.Repeat(" ", 16), moneyStr(totalGross)))
 
 	// Bycatch section
-	jonahPrice := 0.75
-	rockPrice := 0.35
-	monkfishPrice := 4.00
-	seabassPrice := 3.50
 	bycatchTotal := 0.0
 	if result.JonahCrabLbs > 0 || result.RockCrabLbs > 0 || result.GroundfishLbs > 0 {
 		addQ("")
 		addQS(styleLogInfo, "  BYCATCH")
 		if result.JonahCrabLbs > 0 {
-			gross := result.JonahCrabLbs * jonahPrice
+			price := 0.75
+			gross := result.JonahCrabLbs * price
 			bycatchTotal += gross
-			addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", "Jonah Crab", result.JonahCrabLbs, jonahPrice, moneyStr(gross)))
+			addQ(fmt.Sprintf("    %-14s %5.1f lbs  @ $%.2f/lb  = %s", "Jonah Crab", result.JonahCrabLbs, price, moneyStr(gross)))
 		}
 		if result.RockCrabLbs > 0 {
-			gross := result.RockCrabLbs * rockPrice
+			price := 0.35
+			gross := result.RockCrabLbs * price
 			bycatchTotal += gross
-			addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", "Rock Crab", result.RockCrabLbs, rockPrice, moneyStr(gross)))
+			addQ(fmt.Sprintf("    %-14s %5.1f lbs  @ $%.2f/lb  = %s", "Rock Crab", result.RockCrabLbs, price, moneyStr(gross)))
 		}
 		if result.GroundfishLbs > 0 {
-			price := monkfishPrice
-			if result.GroundfishName == "Black Sea Bass" {
-				price = seabassPrice
-			}
+			price := groundfishPrice(result.GroundfishName)
 			gross := result.GroundfishLbs * price
 			bycatchTotal += gross
-			addQ(fmt.Sprintf("    %-10s %5.1f lbs  @ $%.2f/lb  = %s", result.GroundfishName, result.GroundfishLbs, price, moneyStr(gross)))
+			if result.GroundfishName == "Halibut" {
+				addQS(styleLogGreen, fmt.Sprintf("    %-14s %5.1f lbs  @ $%.2f/lb  = %s  ★", result.GroundfishName, result.GroundfishLbs, price, moneyStr(gross)))
+			} else {
+				addQ(fmt.Sprintf("    %-14s %5.1f lbs  @ $%.2f/lb  = %s", result.GroundfishName, result.GroundfishLbs, price, moneyStr(gross)))
+			}
 		}
 		totalGross += bycatchTotal
 	}
@@ -912,7 +911,8 @@ func (m *model) doHaul() {
 	if result.GroundfishLbs > 0 {
 		m.queueLogStyled(styleLogGreen, fmt.Sprintf("1055 — %s in the trap! %.0f lbs. Keeping it.", result.GroundfishName, result.GroundfishLbs))
 	} else if !m.gs.HasGroundfishPermit && rand.Float64() < 0.12 {
-		m.queueLogStyled(styleLogWarn, "1055 — Pulled a nice monkfish. No groundfish permit — back it goes.")
+		fish := []string{"monkfish", "cusk", "halibut"}[rand.Intn(3)]
+		m.queueLogStyled(styleLogWarn, fmt.Sprintf("1055 — Pulled a %s. No groundfish permit — back it goes.", fish))
 	}
 	if result.TrapsLost > 0 {
 		trapCost := float64(result.TrapsLost) * BoatModels[m.gs.BoatName].TrapCost
@@ -1160,12 +1160,7 @@ func (m *model) doSell() {
 		if m.haul != nil {
 			jonahRev := m.haul.JonahCrabLbs * 0.75
 			rockRev := m.haul.RockCrabLbs * 0.35
-			groundfishRev := 0.0
-			if m.haul.GroundfishName == "Monkfish" {
-				groundfishRev = m.haul.GroundfishLbs * 4.00
-			} else if m.haul.GroundfishName == "Black Sea Bass" {
-				groundfishRev = m.haul.GroundfishLbs * 3.50
-			}
+			groundfishRev := m.haul.GroundfishLbs * groundfishPrice(m.haul.GroundfishName)
 			bycatchRev := jonahRev + rockRev + groundfishRev
 			net += bycatchRev
 			revenue += bycatchRev
@@ -1895,6 +1890,20 @@ func healthStatus(h float64) string {
 		return "POOR"
 	}
 	return "CRITICAL"
+}
+
+func groundfishPrice(name string) float64 {
+	switch name {
+	case "Monkfish":
+		return 4.00
+	case "Cusk/Hake":
+		return 2.75
+	case "Black Sea Bass":
+		return 3.50
+	case "Halibut":
+		return 18.00
+	}
+	return 3.00
 }
 
 func moneyStr(v float64) string {
