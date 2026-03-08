@@ -388,13 +388,14 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	// Hull damage from weather
 	hullDmg := weather.HullDamage * boat.HullRisk * (rand.Float64() * 0.5 + 0.5)
 
-	// Trap loss — each trap has a base chance of being lost per haul
-	trapLossRate := 0.02 // 2% per trap in normal conditions
+	// Trap loss — realistic Maine commercial rates
+	// ~5-10% of traps lost annually over ~150 fishing days = 0.03-0.07% per trap per haul
+	trapLossRate := 0.0005 // 0.05% per trap baseline (normal conditions)
 	if weather.Type == WeatherSCA {
-		trapLossRate = 0.05
+		trapLossRate = 0.002 // 0.2% per trap in rough seas (~4x normal)
 	}
-	// Deeper zones = rockier bottom, stronger current = more line loss
-	trapLossRate += zone.SteamHours * 0.003
+	// Deeper zones = rockier bottom, stronger current
+	trapLossRate += zone.SteamHours * 0.00008
 	// Upgraded hauler = better line handling
 	if gs.HasUpgHauler {
 		trapLossRate *= 0.6
