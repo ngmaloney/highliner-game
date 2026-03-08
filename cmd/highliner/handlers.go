@@ -484,12 +484,27 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 
 	fuelCost := float64(result.FuelUsed) * m.gs.DieselPrice
 	baitCost := float64(result.BaitUsed) * m.gs.BaitPrice
+	sternmanCost := 0.0
+	if m.gs.HasSternman {
+		if m.gs.SternmanSkilled {
+			sternmanCost = 150.0
+		} else {
+			sternmanCost = 60.0
+		}
+	}
 	addQS(styleLogInfo, "  EXPENSES")
 	addQS(styleLogExpense, fmt.Sprintf("    Fuel   %d gal × $%.2f  -%s", result.FuelUsed, m.gs.DieselPrice, moneyStr(fuelCost)))
 	addQS(styleLogExpense, fmt.Sprintf("    Bait   %d lbs × $%.2f  -%s", result.BaitUsed, m.gs.BaitPrice, moneyStr(baitCost)))
+	if sternmanCost > 0 {
+		label := "Greenhand"
+		if m.gs.SternmanSkilled {
+			label = "Exp. hand"
+		}
+		addQS(styleLogExpense, fmt.Sprintf("    %-9s day rate   -%s", label, moneyStr(sternmanCost)))
+	}
 	addQ("")
 
-	tripNet := totalGross - fuelCost - baitCost
+	tripNet := totalGross - fuelCost - baitCost - sternmanCost
 	if tripNet >= 0 {
 		addQS(styleLogGreen, fmt.Sprintf("  Trip net: %s", moneyStr(tripNet)))
 	} else {
