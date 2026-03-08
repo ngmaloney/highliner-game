@@ -38,7 +38,7 @@ var BoatModels = map[string]BoatModel{
 	},
 	"Duffy 35": {
 		Name: "Duffy 35", Length: 35, MaxTraps: 400,
-		HullRisk: 1.1, FuelCap: 130, FuelBurnRate: 4.8, BaitCap: 600, Cost: 50000, TrapCost: 155, BaseHaul: 2.3,
+		HullRisk: 1.1, FuelCap: 130, FuelBurnRate: 4.8, BaitCap: 600, Cost: 85000, TrapCost: 155, BaseHaul: 2.3,
 	},
 	"Young Bros 40": {
 		Name: "Young Bros 40", Length: 40, MaxTraps: 600,
