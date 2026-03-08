@@ -81,24 +81,67 @@ type Weather struct {
 
 // NOAAForecast returns a formatted NOAA-style marine forecast string.
 func (w Weather) NOAAForecast() string {
-	windLine := fmt.Sprintf("%s winds %d kt", w.WindDir, w.WindKts)
-	if w.GustKts > 0 {
-		windLine += fmt.Sprintf(" with gusts up to %d kt", w.GustKts)
+	var parts []string
+
+	// Wind line
+	var windLine string
+	if w.WindKts <= 8 {
+		windLine = fmt.Sprintf("%s winds around %d kt.", w.WindDir, w.WindKts)
+	} else if w.GustKts > 0 {
+		windLine = fmt.Sprintf("%s winds %d to %d kt with gusts up to %d kt.", w.WindDir, w.WindKts, w.WindKts+3, w.GustKts)
+	} else {
+		windLine = fmt.Sprintf("%s winds %d to %d kt.", w.WindDir, w.WindKts, w.WindKts+3)
 	}
-	windLine += "."
-	seasLine := fmt.Sprintf("Seas %d to %d ft.", w.SeasFt, w.SeasFtHigh)
-	var extras []string
+	parts = append(parts, windLine)
+
+	// Seas
+	parts = append(parts, fmt.Sprintf("Seas %d to %d ft.", w.SeasFt, w.SeasFtHigh))
+
+	// Wave detail (two wave trains, realistic directions/periods)
+	waveDir1 := w.WindDir
+	waveDir2 := waveTrainDir(w.WindDir)
+	wavePeriod1 := 4 + rand.Intn(4) // 4-7 sec wind waves
+	wavePeriod2 := 8 + rand.Intn(5) // 8-12 sec swell
+	waveHt1 := w.SeasFt
+	waveHt2 := max(1, w.SeasFt-1)
+	parts = append(parts, fmt.Sprintf("Wave Detail: %s %d ft at %d seconds and %s %d ft at %d seconds.",
+		waveDir1, waveHt1, wavePeriod1, waveDir2, waveHt2, wavePeriod2))
+
+	// Fog
 	if w.Fog {
-		extras = append(extras, "Areas of dense fog.")
+		fogPhrases := []string{
+			"Areas of fog.",
+			"Widespread fog.",
+			"Areas of dense fog.",
+			"Patchy dense fog.",
+		}
+		parts = append(parts, fogPhrases[rand.Intn(len(fogPhrases))])
 	}
+
+	// Precip
 	if w.Precip != "" {
-		extras = append(extras, w.Precip)
+		parts = append(parts, w.Precip)
 	}
-	visLine := fmt.Sprintf("Vsby %s.", w.VisNM)
-	parts := []string{windLine, seasLine}
-	parts = append(parts, extras...)
-	parts = append(parts, visLine)
+
+	// Visibility
+	if w.VisNM != "unrestricted" {
+		parts = append(parts, fmt.Sprintf("Vsby %s.", w.VisNM))
+	}
+
 	return strings.Join(parts, " ")
+}
+
+// waveTrainDir returns a secondary swell direction offset from primary wind direction.
+func waveTrainDir(primary string) string {
+	dirs := []string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
+	for i, d := range dirs {
+		if d == primary {
+			// offset 1-3 steps clockwise or counterclockwise
+			offset := 1 + rand.Intn(3)
+			return dirs[(i+offset)%len(dirs)]
+		}
+	}
+	return "E"
 }
 
 var windDirs = []string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
