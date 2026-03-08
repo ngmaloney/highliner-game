@@ -1211,42 +1211,42 @@ func (m *model) doBuy() {
 			}
 		}},
 		// Equipment (indices 7-11)
-		{"Radar", 1200, func() {
+		{"Radar", 2500, func() {
 			if m.gs.HasRadar { m.confirmBuy = "Already installed."; return }
 			if m.gs.Money < 1200 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1200), moneyStr(1200-m.gs.Money)); return }
 			m.gs.Money -= 1200
 			m.gs.HasRadar = true
 			m.confirmBuy = "Radar installed. Fish in fog."
 		}},
-		{"GPS/Chartplotter", 800, func() {
+		{"GPS/Chartplotter", 1500, func() {
 			if m.gs.HasGPS { m.confirmBuy = "Already installed."; return }
 			if m.gs.Money < 800 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(800), moneyStr(800-m.gs.Money)); return }
 			m.gs.Money -= 800
 			m.gs.HasGPS = true
 			m.confirmBuy = "GPS installed. Zones F and G unlocked."
 		}},
-		{"VHF Radio", 250, func() {
+		{"VHF Radio", 500, func() {
 			if m.gs.HasVHF { m.confirmBuy = "Already installed."; return }
 			if m.gs.Money < 250 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(250), moneyStr(250-m.gs.Money)); return }
 			m.gs.Money -= 250
 			m.gs.HasVHF = true
 			m.confirmBuy = "VHF installed. You can hear channel 16 now."
 		}},
-		{"Upgraded Hauler", 600, func() {
+		{"Upgraded Hauler", 2000, func() {
 			if m.gs.HasUpgHauler { m.confirmBuy = "Already installed."; return }
 			if m.gs.Money < 600 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(600), moneyStr(600-m.gs.Money)); return }
 			m.gs.Money -= 600
 			m.gs.HasUpgHauler = true
 			m.confirmBuy = "Hauler upgraded. Hydraulics will thank you."
 		}},
-		{"Depth Sounder", 400, func() {
+		{"Depth Sounder", 2500, func() {
 			if m.gs.HasDepthSound { m.confirmBuy = "Already installed."; return }
 			if m.gs.Money < 400 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(400), moneyStr(400-m.gs.Money)); return }
 			m.gs.Money -= 400
 			m.gs.HasDepthSound = true
 			m.confirmBuy = "Depth sounder installed. You can read the bottom now."
 		}},
-		{"Exhaust Heat Exchanger", 3000, func() {
+		{"Exhaust Heat Exchanger", 5000, func() {
 			if m.gs.HasExhaustHX { m.confirmBuy = "Already installed."; return }
 			if m.gs.Money < 3000 { m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(3000), moneyStr(3000-m.gs.Money)); return }
 			m.gs.Money -= 3000
@@ -1640,42 +1640,42 @@ func (m model) viewMarketContent() string {
 	equipItems := []wharfItem{
 		{"Radar", func() string {
 			if m.gs.HasRadar { return "owned" }
-			return "$1,200"
+			return "$2,500"
 		}(), func() string {
 			if m.gs.HasRadar { return "✓ fish all zones in fog" }
 			return "fish all zones in fog"
 		}()},
 		{"GPS/Chartplotter", func() string {
 			if m.gs.HasGPS { return "owned" }
-			return "$800"
+			return "$1,500"
 		}(), func() string {
 			if m.gs.HasGPS { return "✓ unlocks zones F and G" }
 			return "unlocks zones F and G"
 		}()},
 		{"VHF Radio", func() string {
 			if m.gs.HasVHF { return "owned" }
-			return "$250"
+			return "$500"
 		}(), func() string {
 			if m.gs.HasVHF { return "✓ weather forecast + distress events" }
 			return "weather forecast + distress events"
 		}()},
 		{"Upgraded Hauler", func() string {
 			if m.gs.HasUpgHauler { return "owned" }
-			return "$600"
+			return "$2,000"
 		}(), func() string {
 			if m.gs.HasUpgHauler { return "✓ slower hydraulic wear" }
 			return "slower hydraulic wear"
 		}()},
 		{"Depth Sounder", func() string {
 			if m.gs.HasDepthSound { return "owned" }
-			return "$400"
+			return "$2,500"
 		}(), func() string {
 			if m.gs.HasDepthSound { return "✓ full efficiency in deep zones" }
 			return "full efficiency in deep zones (D-G)"
 		}()},
 		{"Exhaust Heat Exchanger", func() string {
 			if m.gs.HasExhaustHX { return "owned" }
-			return "$3,000"
+			return "$5,000"
 		}(), func() string {
 			if m.gs.HasExhaustHX { return "✓ engine runs cooler, less wear" }
 			return "reduces engine wear per haul"
