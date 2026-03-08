@@ -468,7 +468,7 @@ func (m model) viewMarketContent() string {
 
 	b.WriteString("\n\n")
 	b.WriteString(subHeader("BOAT UPGRADES", m.width))
-	fleetOrder := []string{"Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
+	fleetOrder := []string{"Crowley Beal 28", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
 	// boat upgrade items start at index 13 (after 4 supply, 3 repair, 6 equip, 2 permit)
 	boatBaseIdx := len(supplyItems) + len(repairItems) + len(equipItems) + len(permitItems)
 	currentBoat := BoatModels[m.gs.BoatName]

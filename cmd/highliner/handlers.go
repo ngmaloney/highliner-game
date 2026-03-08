@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 16 {
+			if m.marketCursor < 17 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1117,7 +1117,7 @@ func (m *model) doBuy() {
 	}
 
 	// Boat upgrades — append dynamically based on fleet order
-	fleetOrder := []string{"Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
+	fleetOrder := []string{"Crowley Beal 28", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
 	for _, name := range fleetOrder {
 		name := name // capture
 		bm := BoatModels[name]
