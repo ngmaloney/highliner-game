@@ -454,7 +454,7 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasLifeRaft {
 				return "owned"
 			}
-			return "$600"
+			return "$2,000"
 		}(), func() string {
 			if m.gs.HasLifeRaft {
 				return "✓ one-time use — if she sinks, you survive"

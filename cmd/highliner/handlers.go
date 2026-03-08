@@ -1516,16 +1516,16 @@ func (m *model) doBuy() {
 			m.gs.HasFireExtinguisher = true
 			m.confirmBuy = "Extinguisher mounted in the engine box. One-time use."
 		}},
-		{"Emergency Life Raft", 600, func() {
+		{"Emergency Life Raft", 2000, func() {
 			if m.gs.HasLifeRaft {
 				m.confirmBuy = "Already have one secured on deck."
 				return
 			}
-			if m.gs.Money < 600 {
-				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(600), moneyStr(600-m.gs.Money))
+			if m.gs.Money < 2000 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(2000), moneyStr(2000-m.gs.Money))
 				return
 			}
-			m.gs.Money -= 600
+			m.gs.Money -= 2000
 			m.gs.HasLifeRaft = true
 			m.confirmBuy = "Life raft secured on deck. Hope you never need it."
 		}},
