@@ -36,7 +36,7 @@ func (m model) View() string {
 	}{
 		{"[1/] LOG", ScreenLog},
 		{"[2/M] MAINT", ScreenMaintenance},
-		{"[3/D] DOCK", ScreenDock},
+		{"[3/V] VESSEL", ScreenDock},
 		{"[4/W] WHARF", ScreenMarket},
 		{"[5/G] GROUNDS", ScreenChart},
 	}

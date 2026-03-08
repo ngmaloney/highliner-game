@@ -199,9 +199,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				return m.handlePhaseKey(msg.String())
 			}
-		case "3", "d":
+		case "3", "v":
 			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
-				m.screen = ScreenDock
+				m.screen = ScreenDock // VESSEL tab
 				m.confirmBuy = ""
 				m.syncAltViewport()
 			} else {
