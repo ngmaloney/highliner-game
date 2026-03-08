@@ -268,8 +268,8 @@ func (m *model) doNextDay() {
 		m.gs.DayLost = false
 		m.phase = PhaseMorning
 		m.addLog("")
-		m.addLogStyled(styleLogDanger, "  Spent the day dealing with the Coast Guard paperwork.")
-		m.addLogStyled(styleLogDanger, "  Can't make it out today. Day wasted.")
+		m.addLogStyled(styleLogDanger, "  Spent the night in the Knox County lockup.")
+		m.addLogStyled(styleLogDanger, "  Someone bailed you out this morning. $5,000 fine. Day wasted.")
 		m.chargeDockFee()
 		m.addLog("")
 		m.addLogStyled(styleKey, "  [ENTER/S] Skip to co-op   [W] Wharf   [M] Maintenance")
@@ -777,7 +777,7 @@ func (m *model) resolveEvent(key string) {
 			if rand.Float64() < 0.15 {
 				fine := 5000.0
 				m.gs.Money -= fine
-				m.addLogStyled(styleLogDanger, "  Coast Guard was waiting at the dock. $5,000 fine. One day lost.")
+				m.addLogStyled(styleLogDanger, "  Coast Guard was waiting at the dock. $5,000 fine and a night in Knox County.")
 				m.gs.DayLost = true
 			}
 		} else {
