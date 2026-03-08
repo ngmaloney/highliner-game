@@ -233,6 +233,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		default:
+			// Scroll main log viewport on ScreenLog (when not in zone select or hauling)
+			if m.screen == ScreenLog && m.phase != PhaseZoneSelect && m.phase != PhaseHauling && m.phase != PhaseDecision {
+				switch msg.String() {
+				case "up", "k":
+					m.viewport.LineUp(1)
+					return m, nil
+				case "down", "j":
+					m.viewport.LineDown(1)
+					return m, nil
+				case "pgup":
+					m.viewport.HalfViewUp()
+					return m, nil
+				case "pgdn":
+					m.viewport.HalfViewDown()
+					return m, nil
+				}
+			}
 			// Scroll alt viewport on non-interactive screens
 			if m.screen == ScreenDock {
 				switch msg.String() {
