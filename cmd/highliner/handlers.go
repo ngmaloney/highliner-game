@@ -1070,9 +1070,11 @@ func (m *model) resolveEvent(key string) {
 			m.gs.HasFireExtinguisher = false
 			m.gs.Engine = math.Max(0, m.gs.Engine-65)
 			m.gs.DayLost = true
+			towCost := 500.0
+			m.gs.Money -= towCost
 			m.addLogStyled(styleWarn, "  You put it out. Barely.")
-			m.addLog(styleDim("  Extinguisher empty. Engine compartment is black. Coast Guard tow back to Rockland."))
-			m.addLog(styleDim(fmt.Sprintf("  Engine down to %.0f%%. She'll run but she needs work.", m.gs.Engine)))
+			m.addLog(styleDim("  Extinguisher empty. Engine compartment is black."))
+			m.addLog(styleDim(fmt.Sprintf("  Tow back to Rockland — $%.0f. Engine down to %.0f%%. She needs work.", towCost, m.gs.Engine)))
 			m.addLog(styleDim("  Day's done."))
 		} else {
 			// Abandoned ship — sink check
