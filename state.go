@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -62,32 +64,125 @@ const (
 )
 
 type Weather struct {
-	Type        WeatherType
-	Description string
-	CanFish     bool
-	Modifier    float64 // catch modifier
-	HullDamage  float64 // base hull damage %
+	Type       WeatherType
+	CanFish    bool
+	Modifier   float64 // catch modifier
+	HullDamage float64 // base hull damage %
+	// NOAA forecast fields
+	WindDir    string
+	WindKts    int
+	GustKts    int
+	SeasFt     int
+	SeasFtHigh int
+	VisNM      string // e.g. "1 NM or less", "3 to 5 NM", "unrestricted"
+	Fog        bool
+	Precip     string // e.g. "", "A slight chance of showers.", "Rain likely."
 }
 
-var WeatherTable = []Weather{
-	{WeatherClear, "Flat calm, perfect day to haul", true, 1.0, 0.5},
-	{WeatherFog, "Thick fog bank, radar mandatory", true, 0.85, 1.0},
-	{WeatherSCA, "Winds 25-38 kts, heavy chop", false, 0.5, 3.0},
-	{WeatherGale, "Gale-force winds, stay in port", false, 0.0, 0.0},
+// NOAAForecast returns a formatted NOAA-style marine forecast string.
+func (w Weather) NOAAForecast() string {
+	windLine := fmt.Sprintf("%s winds %d kt", w.WindDir, w.WindKts)
+	if w.GustKts > 0 {
+		windLine += fmt.Sprintf(" with gusts up to %d kt", w.GustKts)
+	}
+	windLine += "."
+	seasLine := fmt.Sprintf("Seas %d to %d ft.", w.SeasFt, w.SeasFtHigh)
+	var extras []string
+	if w.Fog {
+		extras = append(extras, "Areas of dense fog.")
+	}
+	if w.Precip != "" {
+		extras = append(extras, w.Precip)
+	}
+	visLine := fmt.Sprintf("Vsby %s.", w.VisNM)
+	parts := []string{windLine, seasLine}
+	parts = append(parts, extras...)
+	parts = append(parts, visLine)
+	return strings.Join(parts, " ")
 }
+
+var windDirs = []string{"N", "NE", "E", "SE", "S", "SW", "W", "NW"}
 
 var weatherWeights = []int{55, 25, 15, 5} // % probability each
 
 func rollWeather() Weather {
 	r := rand.Intn(100)
-	acc := 0
-	for i, w := range weatherWeights {
-		acc += w
-		if r < acc {
-			return WeatherTable[i]
+	wType := WeatherClear
+	switch {
+	case r < 55:
+		wType = WeatherClear
+	case r < 80:
+		wType = WeatherFog
+	case r < 95:
+		wType = WeatherSCA
+	default:
+		wType = WeatherGale
+	}
+
+	dir := windDirs[rand.Intn(len(windDirs))]
+
+	switch wType {
+	case WeatherClear:
+		windKts := 5 + rand.Intn(11) // 5–15 kt
+		gustKts := 0
+		if windKts > 10 {
+			gustKts = windKts + 3 + rand.Intn(5)
+		}
+		seasLow := 1 + rand.Intn(2)    // 1–2 ft
+		seasHigh := seasLow + rand.Intn(2) // +0-1
+		precip := ""
+		if rand.Float64() < 0.10 {
+			precip = "A slight chance of showers."
+		}
+		return Weather{
+			Type: WeatherClear, CanFish: true, Modifier: 1.0, HullDamage: 0.5,
+			WindDir: dir, WindKts: windKts, GustKts: gustKts,
+			SeasFt: seasLow, SeasFtHigh: seasHigh,
+			VisNM: "unrestricted", Fog: false, Precip: precip,
+		}
+
+	case WeatherFog:
+		windKts := 5 + rand.Intn(11) // 5–15 kt, fog common in light winds
+		gustKts := 0
+		seasLow := 1 + rand.Intn(3)
+		seasHigh := seasLow + 1 + rand.Intn(2)
+		return Weather{
+			Type: WeatherFog, CanFish: true, Modifier: 0.85, HullDamage: 1.0,
+			WindDir: dir, WindKts: windKts, GustKts: gustKts,
+			SeasFt: seasLow, SeasFtHigh: seasHigh,
+			VisNM: "1 NM or less", Fog: true, Precip: "",
+		}
+
+	case WeatherSCA:
+		windKts := 25 + rand.Intn(14) // 25–38 kt
+		gustKts := windKts + 5 + rand.Intn(8)
+		seasLow := 5 + rand.Intn(4)
+		seasHigh := seasLow + 2 + rand.Intn(3)
+		precip := ""
+		if rand.Float64() < 0.40 {
+			precip = "Rain likely."
+		} else if rand.Float64() < 0.30 {
+			precip = "A chance of showers."
+		}
+		return Weather{
+			Type: WeatherSCA, CanFish: false, Modifier: 0.5, HullDamage: 3.0,
+			WindDir: dir, WindKts: windKts, GustKts: gustKts,
+			SeasFt: seasLow, SeasFtHigh: seasHigh,
+			VisNM: "3 to 5 NM", Fog: false, Precip: precip,
+		}
+
+	default: // WeatherGale
+		windKts := 39 + rand.Intn(25) // 39–63 kt
+		gustKts := windKts + 8 + rand.Intn(12)
+		seasLow := 10 + rand.Intn(6)
+		seasHigh := seasLow + 3 + rand.Intn(5)
+		return Weather{
+			Type: WeatherGale, CanFish: false, Modifier: 0.0, HullDamage: 0.0,
+			WindDir: dir, WindKts: windKts, GustKts: gustKts,
+			SeasFt: seasLow, SeasFtHigh: seasHigh,
+			VisNM: "1 NM or less", Fog: rand.Float64() < 0.3, Precip: "Heavy rain.",
 		}
 	}
-	return WeatherTable[0]
 }
 
 // ─── Zones ───────────────────────────────────────────────────────────────────

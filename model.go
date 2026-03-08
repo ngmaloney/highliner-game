@@ -686,11 +686,13 @@ func (m *model) startMorning() {
 	} else if w.Type == WeatherSCA || w.Type == WeatherGale {
 		weatherStyle = styleDanger
 	}
+	m.addLogStyled(styleLogInfo, "  NOAA MARINE FORECAST — EASTERN MAINE COASTAL WATERS")
 	if !w.CanFish {
-		m.addLogStyled(weatherStyle, fmt.Sprintf("  ⚠ %s — %s. Stay in port.", w.Type, w.Description))
+		m.addLogStyled(weatherStyle, fmt.Sprintf("  ⚠ %s — Stay in port.", w.Type))
 	} else {
-		m.addLogStyled(weatherStyle, fmt.Sprintf("  %s — %s", w.Type, w.Description))
+		m.addLogStyled(weatherStyle, fmt.Sprintf("  %s", w.Type))
 	}
+	m.addLogStyled(weatherStyle, fmt.Sprintf("  %s", w.NOAAForecast()))
 	m.addLog("")
 
 	m.addLogStyled(styleLabel, fmt.Sprintf("Vessel: %s — %s", m.gs.VesselName, m.gs.BoatName))
@@ -1454,8 +1456,13 @@ func (m model) View() string {
 	sbStyle := lipgloss.NewStyle().Background(colorCyan).Foreground(colorBlack)
 	wStyle := lipgloss.NewStyle().Background(colorCyan).Foreground(weatherColor).Bold(true)
 
+	weatherSummary := fmt.Sprintf("%s  %dkt", m.weather.Type, m.weather.WindKts)
+	if m.weather.GustKts > 0 {
+		weatherSummary += fmt.Sprintf("G%d", m.weather.GustKts)
+	}
+	weatherSummary += fmt.Sprintf("  Seas %d-%dft", m.weather.SeasFt, m.weather.SeasFtHigh)
 	leftBar := sbStyle.Render(" Weather: ") +
-		wStyle.Render(string(m.weather.Type)) +
+		wStyle.Render(weatherSummary) +
 		sbStyle.Render(fmt.Sprintf("  Phase: %s", phaseName(m.phase)))
 	if m.saveMsg != "" {
 		leftBar += lipgloss.NewStyle().Background(colorCyan).Foreground(colorBrightGreen).Render("  " + m.saveMsg)
