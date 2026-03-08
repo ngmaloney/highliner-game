@@ -945,6 +945,7 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Mike Robbins has been running a Cat since '98. Says he'll never switch. Also says he's never had a good day in Zone A. Man's loyal to his engines and his bad luck.",
 		"Kid at the marina tried to tell Danny Thurston that John Deere and Cat are basically the same. Danny hasn't spoken to him since. It's been three weeks.",
 		"Tommy Leighton put a John Deere in his new build. His father, who runs a Cat, has not visited the boat. Family dinners are tense.",
+		"Bait shed's ripe this morning. People forget what real stink is. Grew up near the paper mill in Millinocket — that was stink. This is just Tuesday.",
 	}
 
 	var lines []string
