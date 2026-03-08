@@ -239,19 +239,21 @@ type Zone struct {
 	ID          string
 	Name        string
 	Multiplier  float64
-	SteamHours  float64 // round-trip steam + hauling idle time (hrs); fuel = SteamHours * boat.FuelBurnRate
+	SteamHours  float64  // round-trip steam + hauling idle time (hrs); fuel = SteamHours * boat.FuelBurnRate
 	Description string
+	Crowding    float64  // 0.0–1.0; drives trap loss from gear conflicts + pot thief odds
 }
 
 var Zones = []Zone{
 	// SteamHours = round-trip transit + hauling idle; multiplied by boat burn rate for fuel used
-	{"A", "Nearshore Ledges", 0.75, 2.0, "Close in, well-picked, easy steam"},
-	{"B", "Eastern Bay", 0.90, 3.0, "Mid-range, decent grounds"},
-	{"C", "The Mudhole", 1.10, 4.0, "Deep soft bottom, good keepers"},
-	{"D", "Green Island Shoals", 1.00, 3.5, "Classic zone, reliable but crowded"},
-	{"E", "Outer Ledges", 1.30, 6.0, "Far out, big lobster if you can get there"},
-	{"F", "The Rip", 1.45, 8.0, "Rough crossing, premium grounds"},
-	{"G", "Deep Water Drop-off", 1.25, 10.0, "Long steam, cold water giants"},
+	// Crowding: nearshore zones heavily trafficked; offshore increasingly solitary
+	{"A", "Nearshore Ledges", 0.75, 2.0, "Close in, well-picked, easy steam", 0.90},
+	{"B", "Eastern Bay", 0.90, 3.0, "Mid-range, decent grounds", 0.70},
+	{"C", "The Mudhole", 1.10, 4.0, "Deep soft bottom, good keepers", 0.50},
+	{"D", "Green Island Shoals", 1.00, 3.5, "Classic zone, reliable but crowded", 0.60},
+	{"E", "Outer Ledges", 1.30, 6.0, "Far out, big lobster if you can get there", 0.25},
+	{"F", "The Rip", 1.45, 8.0, "Rough crossing, premium grounds", 0.15},
+	{"G", "Deep Water Drop-off", 1.25, 10.0, "Long steam, cold water giants", 0.10},
 }
 
 // ─── Components ──────────────────────────────────────────────────────────────
@@ -583,6 +585,8 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	}
 	// Deeper zones = rockier bottom, stronger current
 	trapLossRate += zone.SteamHours * 0.00008
+	// Crowded zones = gear conflicts with other boats, lines crossed, traps run over
+	trapLossRate += zone.Crowding * 0.0004
 	// Upgraded hauler = better line handling
 	if gs.HasUpgHauler {
 		trapLossRate *= 0.6
