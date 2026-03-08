@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -518,107 +519,106 @@ func (m model) viewChartContent() string {
 	b.WriteString(subHeader("FISHING GROUNDS — EASTERN MAINE COASTAL WATERS", m.width))
 	b.WriteString("\n")
 
-	// ASCII depth/distance map
-	// Zones arranged shore→offshore left to right
-	b.WriteString(styleDim("  ◄── SHORE") + strings.Repeat(" ", 52) + styleDim("DEEP SEA ──►\n"))
-	b.WriteString("\n")
+	// ASCII depth/distance map — plain text with post-styled zone labels
+	b.WriteString("  " + styleDim("◄── SHORE") + strings.Repeat(" ", 48) + styleDim("DEEP SEA ──►") + "\n\n")
 
-	// Zone markers row
 	b.WriteString("  ")
 	spacing := []int{0, 8, 8, 8, 8, 8, 8}
 	for i, z := range Zones {
 		if i > 0 {
 			b.WriteString(strings.Repeat("~", spacing[i]-2))
 		}
-		zoneStyle := lipgloss.NewStyle().Foreground(colorBrightWhite).Bold(true)
-		if m.gs.HotCrabZone == z.ID {
-			zoneStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Bold(true)
+		var zs lipgloss.Style
+		switch {
+		case m.zoneBlocked(i):
+			zs = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+		case m.gs.HotCrabZone == z.ID:
+			zs = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Bold(true)
+		default:
+			zs = lipgloss.NewStyle().Foreground(colorBrightWhite).Bold(true)
 		}
-		blocked := m.zoneBlocked(i)
-		if blocked {
-			zoneStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
-		}
-		b.WriteString(zoneStyle.Render("[" + z.ID + "]"))
+		b.WriteString(zs.Render("[" + z.ID + "]"))
 	}
-	b.WriteString("\n")
-
-	// Depth line
-	b.WriteString("  ")
-	depths := []string{"─────", "──────", "──────", "───────", "────────", "──────────", "────────────"}
-	for _, d := range depths {
+	b.WriteString("\n  ")
+	for _, d := range []string{"─────", "──────", "──────", "───────", "────────", "──────────", "────────────"} {
 		b.WriteString(d)
 	}
 	b.WriteString("\n")
+	b.WriteString(styleDim("  Sandy   Mud     Rocky   Shoals  Ledge   Mixed   Deep") + "\n\n")
 
-	// Seabed texture
-	textures := []string{
-		"  Sandy   Mud     Rocky   Shoals  Ledge   Mixed   Deep",
-	}
-	b.WriteString(styleDim(textures[0]) + "\n")
-	b.WriteString("\n")
-
-	// Legend
 	if m.gs.HotCrabZone != "" {
-		b.WriteString(fmt.Sprintf("  %s  Zone %s running heavy crab today\n",
-			lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Render("🦀"),
-			m.gs.HotCrabZone))
-		b.WriteString("\n")
+		b.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Render(
+			fmt.Sprintf("🦀 Zone %s running heavy crab today", m.gs.HotCrabZone)) + "\n\n")
 	}
 
-	// Stats table
+	// Stats table — all plain text, color applied to whole row after padding
 	b.WriteString(subHeader("ZONE DETAILS", m.width))
 	b.WriteString("\n")
 
-	// Header
-	b.WriteString(styleLogInfo.Render(fmt.Sprintf("  %-2s  %-22s  %5s  %6s  %5s  %-9s  %s\n",
-		"Z", "Name", "Steam", "Fuel", "Yield", "Crab", "Notes")))
-	b.WriteString("  " + styleDim(strings.Repeat("─", 75)) + "\n")
+	// column widths (plain chars): Z=1 Name=22 Steam=5 Fuel=7 Lobster=7 Crab=6 Fish=6 Notes
+	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-6s  %-6s  %s",
+		"Z", "Name", "Steam", "Fuel", "Lobster", "Crab", "Fish", "Notes")
+	b.WriteString(styleLogInfo.Render(hdr) + "\n")
+	b.WriteString("  " + styleDim(strings.Repeat("─", len(hdr)-2)) + "\n")
 
 	for i, z := range Zones {
 		fuelBurn := z.SteamHours * boat.FuelBurnRate
-		catchMult := z.Multiplier * 100
 
-		// Crab indicator
-		crabIndicator := "low    "
-		if z.SteamHours >= 6.0 {
-			crabIndicator = "high   "
-		} else if z.SteamHours >= 4.0 {
-			crabIndicator = "med    "
-		}
+		// Catchable % estimates per zone
+		lobsterPct := int(z.Multiplier * 100)
+
+		crabFactor := 0.5 + (z.SteamHours/10.0)*0.8
 		if m.gs.HotCrabZone == z.ID {
-			crabIndicator = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Render("🦀 hot  ")
+			crabFactor *= 1.6
+		}
+		jonahChance := math.Min(0.85, 0.30*crabFactor)
+		rockChance  := math.Min(0.65, 0.18*crabFactor)
+		crabPct     := int((jonahChance + rockChance*0.5) * 100) // weighted by frequency
+
+		fishPct := 0
+		if z.SteamHours >= 2.0 {
+			fishPct = 47 // ~25% cusk + 20% monkfish + 2% halibut
 		}
 
-		// Access notes
+		crabStr := fmt.Sprintf("~%d%%", crabPct)
+		if m.gs.HotCrabZone == z.ID {
+			crabStr = fmt.Sprintf("~%d%%🦀", crabPct)
+		}
+		fishStr := "-"
+		if fishPct > 0 {
+			fishStr = fmt.Sprintf("~%d%%", fishPct)
+		}
+
+		// Access notes (plain)
 		notes := ""
 		if m.zoneBlocked(i) {
-			notes = styleDanger.Render(m.zoneBlockReason(i))
+			notes = m.zoneBlockReason(i)
 		} else if z.ID == "F" || z.ID == "G" {
-			notes = styleDim("far offshore")
+			notes = "far offshore"
 		} else if z.ID == "E" {
-			notes = styleDim("long steam")
+			notes = "long steam"
 		}
 
-		isBlocked := m.zoneBlocked(i)
-		rowColor := colorBrightWhite
-		if isBlocked {
+		// Build the plain row, then color the whole thing
+		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-7s %-7s %s",
+			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterPct, crabStr, fishStr, notes)
+
+		var rowColor lipgloss.Color
+		switch {
+		case m.zoneBlocked(i):
 			rowColor = lipgloss.Color("#555555")
+		case m.gs.HotCrabZone == z.ID:
+			rowColor = lipgloss.Color("#FF8C00")
+		default:
+			rowColor = colorBrightWhite
 		}
-		rs := lipgloss.NewStyle().Foreground(rowColor)
-
-		// Build each column as plain text first, then style — avoids ANSI width drift in Sprintf
-		zoneCol  := rs.Render(fmt.Sprintf("%-2s", z.ID))
-		nameCol  := rs.Render(fmt.Sprintf("%-22s", z.Name))
-		statsCol := fmt.Sprintf("%3.1fh  %5.1fgl  %4.0f%%", z.SteamHours, fuelBurn, catchMult)
-
-		b.WriteString(fmt.Sprintf("  %s  %s  %s  %s%s\n",
-			zoneCol, nameCol, statsCol, crabIndicator, notes))
+		b.WriteString(lipgloss.NewStyle().Foreground(rowColor).Render(plain) + "\n")
 	}
 
 	b.WriteString("\n")
-	b.WriteString(styleDim(fmt.Sprintf("  Fuel burn based on current vessel: %s (%.1f gal/hr)\n", m.gs.BoatName, boat.FuelBurnRate)))
-	b.WriteString(styleDim(fmt.Sprintf("  Tank: %d/%d gal   Range at full tank: %.1f hrs steam\n",
-		m.gs.Fuel, boat.FuelCap, float64(m.gs.Fuel)/boat.FuelBurnRate)))
+	b.WriteString(styleDim(fmt.Sprintf("  Vessel: %s  %.1f gal/hr  |  Tank: %d/%d gal  |  Range: %.1f hrs\n",
+		m.gs.BoatName, boat.FuelBurnRate, m.gs.Fuel, boat.FuelCap, float64(m.gs.Fuel)/boat.FuelBurnRate)))
+	b.WriteString(styleDim("  Crab/Fish % = chance per haul (requires permit to keep)") + "\n")
 
 	return b.String()
 }
