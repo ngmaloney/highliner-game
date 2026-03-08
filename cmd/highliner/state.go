@@ -556,11 +556,7 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	}
 
 	// Bait: ~2-3 lbs herring per trap per haul (commercial Maine standard)
-	baitPerTrap := 2.0 + rand.Float64()*1.0 // 2.0-3.0 lbs/trap
-	baitUsed := int(float64(gs.Traps)*baitPerTrap + 0.5)
-	if baitUsed > gs.Bait {
-		baitUsed = gs.Bait
-	}
+	// baitUsed computed below after crab rolls (crabs affect bait consumption)
 
 	// Component wear scales with steam hours — deeper zones = longer run = more wear
 	// Zone A (~2.5 hrs) is baseline; Zone G (~10 hrs) is 4x the steam
@@ -629,6 +625,20 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	crabPerTrap := (rolledJonahLbs + rolledRockLbs) / math.Max(1, traps)
 	crowding := math.Max(0.5, 1.0-(crabPerTrap/trapCapacityLbs)*0.8)
 	catchLbs *= crowding
+
+	// Bait: crabs eat bait aggressively — heavy crab load burns through herring faster
+	baitPerTrap := 2.0 + rand.Float64()*1.0 // 2.0-3.0 lbs/trap baseline
+	if crabPerTrap > 10.0 {
+		baitPerTrap *= 1.5
+	} else if crabPerTrap > 5.0 {
+		baitPerTrap *= 1.25
+	} else if crabPerTrap > 2.0 {
+		baitPerTrap *= 1.1
+	}
+	baitUsed := int(float64(gs.Traps)*baitPerTrap + 0.5)
+	if baitUsed > gs.Bait {
+		baitUsed = gs.Bait
+	}
 	if gs.HasCrabPermit {
 		jonahLbs = rolledJonahLbs
 		rockLbs = rolledRockLbs
