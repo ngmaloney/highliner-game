@@ -32,12 +32,12 @@ var BoatModels = map[string]BoatModel{
 	// Fishes nearshore to mid-range; outer zones are a stretch
 	"Eastern 22": {
 		Name: "Eastern 22", Length: 22, MaxTraps: 40,
-		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 250, MaxSteamHrs: 6.5, Cost: 0, TrapCost: 175, BaseHaul: 2.0,
+		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 75, MaxSteamHrs: 6.5, Cost: 0, TrapCost: 175, BaseHaul: 2.0,
 	},
 	// Crowley Beal 28: step up from the Eastern 22; popular first real boat in Maine
 	"Crowley Beal 28": {
 		Name: "Crowley Beal 28", Length: 28, MaxTraps: 100,
-		HullRisk: 1.8, FuelCap: 70, FuelBurnRate: 3.2, BaitCap: 350, MaxSteamHrs: 7.5, Cost: 25000, TrapCost: 170, BaseHaul: 2.1,
+		HullRisk: 1.8, FuelCap: 70, FuelBurnRate: 3.2, BaitCap: 150, MaxSteamHrs: 7.5, Cost: 25000, TrapCost: 170, BaseHaul: 2.1,
 	},
 	"Calvin Beal 34": {
 		Name: "Calvin Beal 34", Length: 34, MaxTraps: 200,
@@ -329,6 +329,7 @@ type GameState struct {
 	HasVHF        bool `json:"has_vhf"`         // weather forecast + distress events
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // +30% yield, slower hydraulic wear
 	HasLiveWell   bool `json:"has_live_well"`    // +10% sale price — lobsters arrive alive and lively
+	HasBaitFreezer bool `json:"has_bait_freezer"` // 500 lb bait capacity
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 	HasDeckLights bool `json:"has_deck_lights"` // early departure, +10% catch
@@ -342,6 +343,15 @@ type GameState struct {
 	FlatlanderBonus  bool `json:"flatlander_bonus"`   // 20% price bump today (resets each morning)
 
 	PendingVandalism bool `json:"pending_vandalism"` // trap thief flagged — engine damage possible next morning
+}
+
+// EffectiveBaitCap returns the actual bait storage available — boat base or 500 with freezer upgrade.
+func (gs *GameState) EffectiveBaitCap() int {
+	base := BoatModels[gs.BoatName].BaitCap
+	if gs.HasBaitFreezer && base < 500 {
+		return 500
+	}
+	return base
 }
 
 func newGame() *GameState {

@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 21 {
+			if m.marketCursor < 23 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1207,7 +1207,7 @@ func (m *model) doBuy() {
 		}},
 		// SUPPLIES
 		{"Bait (50 lbs)", 0, func() {
-			cap := BoatModels[m.gs.BoatName].BaitCap
+			cap := m.gs.EffectiveBaitCap()
 			if m.gs.Bait >= cap {
 				m.confirmBuy = "Bait storage full!"
 				return
@@ -1223,7 +1223,7 @@ func (m *model) doBuy() {
 			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring for %s", add, moneyStr(cost))
 		}},
 		{"Bait (200 lbs)", 0, func() {
-			cap := BoatModels[m.gs.BoatName].BaitCap
+			cap := m.gs.EffectiveBaitCap()
 			if m.gs.Bait >= cap {
 				m.confirmBuy = "Bait storage full!"
 				return
@@ -1402,6 +1402,24 @@ func (m *model) doBuy() {
 			m.gs.HasExhaustHX = true
 			m.confirmBuy = "Heat exchanger installed. Engine'll run cooler and last longer."
 		}},
+		{"Bait Freezer", 1200, func() {
+			boat := BoatModels[m.gs.BoatName]
+			if boat.BaitCap >= 500 {
+				m.confirmBuy = "This vessel already has enough bait storage."
+				return
+			}
+			if m.gs.HasBaitFreezer {
+				m.confirmBuy = "Already installed."
+				return
+			}
+			if m.gs.Money < 1200 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1200), moneyStr(1200-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 1200
+			m.gs.HasBaitFreezer = true
+			m.confirmBuy = "Bait freezer installed. Buy 200 lbs at a time and stop hitting the wharf every morning."
+		}},
 		{"Deck Lights", 1500, func() {
 			if m.gs.HasDeckLights {
 				m.confirmBuy = "Already installed."
@@ -1501,6 +1519,7 @@ func (m *model) doBuy() {
 			m.gs.HasUpgHauler = false
 			m.gs.HasDepthSound = false
 			m.gs.HasExhaustHX = false
+			m.gs.HasBaitFreezer = false
 			m.gs.HasDeckLights = false
 			m.gs.HasLiveWell = false
 			m.confirmBuy = fmt.Sprintf("She's yours. Welcome aboard the %s. Gear up at the Wharf.", name)

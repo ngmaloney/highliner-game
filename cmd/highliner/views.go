@@ -65,14 +65,14 @@ func (m model) View() string {
 	}
 
 	fuelPct := float64(m.gs.Fuel) / float64(boat.FuelCap)
-	baitPct := float64(m.gs.Bait) / float64(boat.BaitCap)
+	baitPct := float64(m.gs.Bait) / float64(m.gs.EffectiveBaitCap())
 	trapPct := float64(m.gs.Traps) / float64(boat.MaxTraps)
 
 	fuelStr := statVal(
 		fmt.Sprintf("%d/%d gal", m.gs.Fuel, boat.FuelCap), "", "",
 		fuelPct < 0.30, fuelPct < 0.15)
 	baitStr := statVal(
-		fmt.Sprintf("%d/%d lbs", m.gs.Bait, boat.BaitCap), "", "",
+		fmt.Sprintf("%d/%d lbs", m.gs.Bait, m.gs.EffectiveBaitCap()), "", "",
 		baitPct < 0.30, m.gs.Bait == 0)
 	trapStr := statVal(
 		fmt.Sprintf("%d/%d", m.gs.Traps, boat.MaxTraps), "", "",
@@ -195,7 +195,7 @@ func (m model) viewDockContent() string {
 	// ── GEAR & SUPPLIES ──────────────────────────────────────────────────────
 	b.WriteString(subHeader("GEAR & SUPPLIES", m.width))
 	b.WriteString(fmt.Sprintf("  %s %s / %d max\n", label("Traps:", 12), styleValue.Render(fmt.Sprintf("%d", m.gs.Traps)), boat.MaxTraps))
-	b.WriteString(fmt.Sprintf("  %s %s / %d lbs cap\n", label("Bait:", 12), styleValue.Render(fmt.Sprintf("%d", m.gs.Bait)), boat.BaitCap))
+	b.WriteString(fmt.Sprintf("  %s %s / %d lbs cap\n", label("Bait:", 12), styleValue.Render(fmt.Sprintf("%d", m.gs.Bait)), m.gs.EffectiveBaitCap()))
 	b.WriteString(fmt.Sprintf("  %s %s / %d gal cap\n", label("Fuel:", 12), styleValue.Render(fmt.Sprintf("%d gal", m.gs.Fuel)), boat.FuelCap))
 	b.WriteString(fmt.Sprintf("  %s %s lbs\n\n", label("Hold:", 12), styleValue.Render(fmt.Sprintf("%.1f", m.gs.Freezer))))
 
@@ -242,7 +242,7 @@ func (m model) viewMarketContent() string {
 	b.WriteString(fmt.Sprintf("  Cash: %s   Fuel: %d/%d gal   Bait: %d/%d lbs\n",
 		moneyStyled(m.gs.Money),
 		m.gs.Fuel, BoatModels[m.gs.BoatName].FuelCap,
-		m.gs.Bait, BoatModels[m.gs.BoatName].BaitCap))
+		m.gs.Bait, m.gs.EffectiveBaitCap()))
 
 	// Today's co-op dock prices
 	p := m.gs.DailyPrices
@@ -376,6 +376,25 @@ func (m model) viewMarketContent() string {
 				return "✓ engine runs cooler, less wear"
 			}
 			return "reduces engine wear per haul"
+		}()},
+		{"Bait Freezer", func() string {
+			if m.gs.HasBaitFreezer {
+				return "owned"
+			}
+			boat := BoatModels[m.gs.BoatName]
+			if boat.BaitCap >= 500 {
+				return "built-in"
+			}
+			return "$1,200"
+		}(), func() string {
+			if m.gs.HasBaitFreezer {
+				return "✓ 500 lb bait capacity — buy in bulk, save trips to the wharf"
+			}
+			boat := BoatModels[m.gs.BoatName]
+			if boat.BaitCap >= 500 {
+				return "this vessel has enough bait storage already"
+			}
+			return fmt.Sprintf("500 lb capacity (now: %d lb) — stop buying bait every day", boat.BaitCap)
 		}()},
 		{"Deck Lights", func() string {
 			if m.gs.HasDeckLights {
