@@ -1349,11 +1349,11 @@ func (m *model) doBuy() {
 				m.confirmBuy = "Already installed."
 				return
 			}
-			if m.gs.Money < 1200 {
-				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1200), moneyStr(1200-m.gs.Money))
+			if m.gs.Money < 2500 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(2500), moneyStr(2500-m.gs.Money))
 				return
 			}
-			m.gs.Money -= 1200
+			m.gs.Money -= 2500
 			m.gs.HasRadar = true
 			m.confirmBuy = "Radar installed. Fish in fog."
 		}},
@@ -1422,7 +1422,7 @@ func (m *model) doBuy() {
 			m.gs.HasExhaustHX = true
 			m.confirmBuy = "Heat exchanger installed. Engine'll run cooler and last longer."
 		}},
-		{"Bait Freezer", 1200, func() {
+		{"Bait Freezer", 2500, func() {
 			boat := BoatModels[m.gs.BoatName]
 			if boat.BaitCap >= 500 {
 				m.confirmBuy = "This vessel already has enough bait storage."
@@ -1432,11 +1432,11 @@ func (m *model) doBuy() {
 				m.confirmBuy = "Already installed."
 				return
 			}
-			if m.gs.Money < 1200 {
-				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(1200), moneyStr(1200-m.gs.Money))
+			if m.gs.Money < 2500 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(2500), moneyStr(2500-m.gs.Money))
 				return
 			}
-			m.gs.Money -= 1200
+			m.gs.Money -= 2500
 			m.gs.HasBaitFreezer = true
 			m.confirmBuy = "Bait freezer installed. Buy 200 lbs at a time and stop hitting the wharf every morning."
 		}},
