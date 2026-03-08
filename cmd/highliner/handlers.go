@@ -1071,6 +1071,7 @@ func (m *model) resolveEvent(key string) {
 		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Counted %.0f lbs out of one trap. Bait was perfect. Wish every trap fished like that.", bonus))
 
 	case EventCoastGuardBoarding:
+		m.addLog(styleDim("  Officer checks extinguisher, life raft, flares..."))
 		fine := 0.0
 		var violations []string
 		if !m.gs.HasFireExtinguisher {
@@ -1082,13 +1083,13 @@ func (m *model) resolveEvent(key string) {
 			violations = append(violations, "no life raft")
 		}
 		if len(violations) == 0 {
-			m.addLogStyled(styleLogGreen, "  Everything checks out. Officer nods, they shove off.")
-			m.addLog(styleDim("  \"Good to see somebody's running right out here.\""))
+			m.addLogStyled(styleLogGreen, "  All safety gear present and accounted for.")
+			m.addLog(styleDim("  \"Good to see somebody's running right out here.\" They shove off."))
 		} else {
 			m.gs.Money -= fine
 			m.addLogStyled(styleDanger, fmt.Sprintf("  Violations: %s", strings.Join(violations, ", ")))
-			m.addLogStyled(styleDanger, fmt.Sprintf("  $%.0f fine. Fix it before they catch you again.", fine))
-			m.addLog(styleDim("  Officer hands you the citation. \"Get it squared away, Captain.\""))
+			m.addLogStyled(styleDanger, fmt.Sprintf("  $%.0f fine. Get it squared away.", fine))
+			m.addLog(styleDim("  Officer hands you the citation and steps back over the rail."))
 		}
 
 	case EventEngineFire:
