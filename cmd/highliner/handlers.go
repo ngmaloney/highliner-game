@@ -332,7 +332,7 @@ func (m *model) startMorning() {
 	}
 
 	m.addLog("")
-	m.addLog(m.logDivider(styleLogInfo, "RADIO CHATTER"))
+	m.addLog(m.logDivider(styleLogInfo, "CHANNEL 22"))
 	for _, line := range RollMorningGossip(m.gs, m.weather) {
 		m.addLogStyled(styleLogDeck, fmt.Sprintf("  %s", line))
 	}
