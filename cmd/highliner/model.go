@@ -925,11 +925,11 @@ func (m *model) doHaul() {
 			m.gs.Money -= 9 // cost of the six-pack
 		} else {
 			if m.gs.HasVHF {
-				m.queueLogStyled(styleLogWarn, "0645 — Put out a call on channel 16. No answer. Calling TowBoatUS.")
+				m.queueLogStyled(styleLogWarn, "0645 — Put out a call on channel 16. No answer. Sea Tow's on the way.")
 			} else {
-				m.queueLogStyled(styleLogWarn, "0645 — No radio. Firing flares. Coast Guard spotted you.")
+				m.queueLogStyled(styleLogWarn, "0645 — No radio. Cell signal's weak out here. Finally got through to Sea Tow.")
 			}
-			m.queueLogStyled(styleLogExpense, "1030 — Tow back to the dock. $300.")
+			m.queueLogStyled(styleLogExpense, "1030 — Sea Tow dragged you in. $300.")
 			m.gs.Money -= 300
 		}
 		// Zero out the haul — no catch today
