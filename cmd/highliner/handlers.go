@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 12 {
+			if m.marketCursor < 16 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1072,7 +1072,7 @@ func (m *model) doBuy() {
 				return
 			}
 			if boat.Length < 34 {
-				m.confirmBuy = "NOAA requires a vessel 34 ft or larger."
+				m.confirmBuy = "NOAA requires a vessel 34 ft or larger for a groundfish permit."
 				return
 			}
 			if m.gs.Money < 1500 {
@@ -1085,21 +1085,41 @@ func (m *model) doBuy() {
 		}},
 	}
 
+	// Boat upgrades — append dynamically based on fleet order
+	fleetOrder := []string{"Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
+	for _, name := range fleetOrder {
+		name := name // capture
+		bm := BoatModels[name]
+		items = append(items, struct {
+			name  string
+			cost  float64
+			apply func()
+		}{name, 0, func() {
+			current := BoatModels[m.gs.BoatName]
+			if bm.Length <= current.Length {
+				m.confirmBuy = fmt.Sprintf("You're already on a %s or better.", name)
+				return
+			}
+			if m.gs.Money < float64(bm.Cost) {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(float64(bm.Cost)), moneyStr(float64(bm.Cost)-m.gs.Money))
+				return
+			}
+			m.gs.Money -= float64(bm.Cost)
+			m.gs.BoatName = name
+			if m.gs.Traps > bm.MaxTraps {
+				m.gs.Traps = bm.MaxTraps
+			}
+			m.gs.Fuel = min(m.gs.Fuel, bm.FuelCap)
+			m.gs.Bait = min(m.gs.Bait, bm.BaitCap)
+			m.confirmBuy = fmt.Sprintf("She's yours. Welcome aboard the %s.", name)
+		}})
+	}
+
 	if m.marketCursor >= len(items) {
 		return
 	}
 
 	item := items[m.marketCursor]
-	if item.cost > 0 {
-		if m.gs.Money >= item.cost {
-			m.gs.Money -= item.cost
-			item.apply()
-			m.confirmBuy = fmt.Sprintf("Bought: %s", item.name)
-		} else {
-			m.confirmBuy = fmt.Sprintf("Not enough cash! Need %s", moneyStr(item.cost))
-		}
-	} else {
-		item.apply()
-	}
+	item.apply()
 	saveGame(m.gs)
 }

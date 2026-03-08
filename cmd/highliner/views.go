@@ -414,12 +414,16 @@ func (m model) viewMarketContent() string {
 			}
 			boat := BoatModels[m.gs.BoatName]
 			if boat.Length < 34 {
-				return "34ft+ only"
+				return styleDanger.Render("34ft+ only")
 			}
 			return "$1,500"
 		}(), func() string {
 			if m.gs.HasGroundfishPermit {
 				return "✓ keep monkfish, cusk, halibut"
+			}
+			boat := BoatModels[m.gs.BoatName]
+			if boat.Length < 34 {
+				return styleWarn.Render("upgrade vessel to 34ft+ to unlock")
 			}
 			return "keep and sell monkfish, cusk, halibut"
 		}()},
@@ -463,20 +467,39 @@ func (m model) viewMarketContent() string {
 	b.WriteString(styleKey.Render("  [↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs"))
 
 	b.WriteString("\n\n")
-	b.WriteString(subHeader("BOAT UPGRADES (not yet implemented)", m.width))
+	b.WriteString(subHeader("BOAT UPGRADES", m.width))
 	fleetOrder := []string{"Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
-	for _, name := range fleetOrder {
+	// boat upgrade items start at index 13 (after 4 supply, 3 repair, 6 equip, 2 permit)
+	boatBaseIdx := len(supplyItems) + len(repairItems) + len(equipItems) + len(permitItems)
+	currentBoat := BoatModels[m.gs.BoatName]
+	for i, name := range fleetOrder {
 		bm := BoatModels[name]
-		avail := m.gs.Money >= float64(bm.Cost)
-		style := styleDanger
-		if avail {
-			style = styleGood
+		idx := boatBaseIdx + i
+		cursor := "  "
+		if m.marketCursor == idx {
+			cursor = styleSelected.Render("►")
+			cursor += " "
+		} else {
+			cursor = "  "
 		}
-		b.WriteString(fmt.Sprintf("  %s  $%-10d  %d traps  %s\n",
-			style.Render(fmt.Sprintf("%-16s", name)),
-			bm.Cost,
-			bm.MaxTraps,
-			styleDim(fmt.Sprintf("%d ft", bm.Length))))
+
+		var costStr, descStr string
+		if bm.Length <= currentBoat.Length {
+			costStr = styleDim("owned")
+			descStr = styleDim("current vessel or smaller")
+		} else if m.gs.Money < float64(bm.Cost) {
+			costStr = styleDanger.Render(moneyStr(float64(bm.Cost)))
+			descStr = styleDim(fmt.Sprintf("need %s more", moneyStr(float64(bm.Cost)-m.gs.Money)))
+		} else {
+			costStr = styleGood.Render(moneyStr(float64(bm.Cost)))
+			descStr = styleDim(fmt.Sprintf("%d traps  %d ft", bm.MaxTraps, bm.Length))
+		}
+
+		b.WriteString(fmt.Sprintf("%s%-22s  %-12s  %s\n",
+			cursor,
+			name,
+			costStr,
+			descStr))
 	}
 
 	return b.String()
