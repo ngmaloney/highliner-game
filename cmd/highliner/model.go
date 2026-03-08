@@ -424,8 +424,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Viewport scrolling on log screen
-	if m.screen == ScreenLog {
+	// Viewport scrolling on log screen — but NOT during active phases that need key input
+	if m.screen == ScreenLog && m.phase != PhaseDecision && m.phase != PhaseHauling && m.phase != PhaseEvening {
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
