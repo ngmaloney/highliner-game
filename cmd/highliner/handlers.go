@@ -565,10 +565,19 @@ func (m *model) doHaul() {
 	// Bycatch log lines
 	if result.JonahCrabLbs > 0 {
 		m.queueLog(fmt.Sprintf("1050 — Jonah crabs loaded in the traps. Keeping %.0f lbs.", result.JonahCrabLbs))
+		if result.CrabCrowded {
+			m.queueLogStyled(styleLogWarn, "       Traps were packed. Lobster catch took a hit.")
+		}
 	} else if result.RockCrabLbs > 0 {
 		m.queueLog(fmt.Sprintf("1050 — Rock crabs in the traps. Keeping %.0f lbs.", result.RockCrabLbs))
+		if result.CrabCrowded {
+			m.queueLogStyled(styleLogWarn, "       Crabs crowded out the lobster today.")
+		}
 	} else if !m.gs.HasCrabPermit && rand.Float64() < 0.40 {
 		m.queueLog("1050 — Crabs loaded in traps. No permit — back they go.")
+		if result.CrabCrowded {
+			m.queueLogStyled(styleLogWarn, "       Traps full of crab. Light on lobster today.")
+		}
 	}
 	if result.GroundfishLbs > 0 {
 		m.queueLogStyled(styleLogGreen, fmt.Sprintf("1055 — %s in the trap! %.0f lbs. Keeping it.", result.GroundfishName, result.GroundfishLbs))

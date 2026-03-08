@@ -402,6 +402,7 @@ type HaulResult struct {
 	HydraulicsDmg float64
 	HullDmg       float64
 	TrapsLost     int
+	CrabCrowded   bool    // crabs reduced lobster catch this haul
 	// Bycatch (kept, with permit)
 	JonahCrabLbs   float64
 	RockCrabLbs    float64
@@ -589,6 +590,13 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		// 1–5 lbs/trap; rock crabs less common than Jonah
 		rolledRockLbs = traps * (1.0 + rand.Float64()*4.0) * crabFactor
 	}
+
+	// Trap crowding: crabs eat bait and fill space, reducing lobster catch
+	// Each trap holds ~20 lbs total; heavy crab load crowds out lobster
+	const trapCapacityLbs = 20.0
+	crabPerTrap := (rolledJonahLbs + rolledRockLbs) / math.Max(1, traps)
+	crowding := math.Max(0.5, 1.0-(crabPerTrap/trapCapacityLbs)*0.8)
+	catchLbs *= crowding
 	if gs.HasCrabPermit {
 		jonahLbs = rolledJonahLbs
 		rockLbs = rolledRockLbs
@@ -627,6 +635,7 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		HydraulicsDmg: hydDmg,
 		HullDmg:       hullDmg,
 		TrapsLost:     trapsLost,
+		CrabCrowded:   crowding < 0.85,
 		JonahCrabLbs:         jonahLbs,
 		RockCrabLbs:          rockLbs,
 		GroundfishName:       groundfishName,
