@@ -35,7 +35,7 @@ var BoatModels = map[string]BoatModel{
 		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 250, MaxSteamHrs: 6.5, Cost: 0, TrapCost: 175, BaseHaul: 2.0,
 	},
 	"Calvin Beal 34": {
-		Name: "Calvin Beal 34", Length: 34, MaxTraps: 300,
+		Name: "Calvin Beal 34", Length: 34, MaxTraps: 200,
 		HullRisk: 1.2, FuelCap: 120, FuelBurnRate: 4.5, BaitCap: 500, Cost: 45000, TrapCost: 165, BaseHaul: 2.2,
 	},
 	"Duffy 35": {

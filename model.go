@@ -403,14 +403,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				case "g":
 					if m.screen == ScreenDock {
+						boat := BoatModels[m.gs.BoatName]
 						if m.gs.HasGroundfishPermit {
 							m.confirmBuy = "Already licensed for groundfish."
+						} else if boat.Length < 34 {
+							m.confirmBuy = "NOAA requires a vessel 34 ft or larger for a groundfish permit."
 						} else if m.gs.Money < 1500 {
 							m.confirmBuy = fmt.Sprintf("Need $1,500 — short by %s", moneyStr(1500-m.gs.Money))
 						} else {
 							m.gs.Money -= 1500
 							m.gs.HasGroundfishPermit = true
-							m.confirmBuy = "Groundfish permit issued. Monkfish and sea bass are yours to keep."
+							m.confirmBuy = "Groundfish permit issued. Monkfish, cusk, and halibut are yours to keep."
 						}
 						m.syncAltViewport()
 						return m, nil
@@ -1637,9 +1640,14 @@ func (m model) viewDockContent() string {
 	if m.gs.HasCrabPermit {
 		crabStatus = styleGood.Render("✓ licensed")
 	}
-	groundfishStatus := styleDim("not licensed — monkfish/sea bass are throwbacks")
+	currentBoat := BoatModels[m.gs.BoatName]
+	var groundfishStatus string
 	if m.gs.HasGroundfishPermit {
 		groundfishStatus = styleGood.Render("✓ licensed")
+	} else if currentBoat.Length < 34 {
+		groundfishStatus = styleWarn.Render("requires 34 ft+ vessel")
+	} else {
+		groundfishStatus = styleDim("not licensed — monkfish/cusk/halibut are throwbacks")
 	}
 	b.WriteString(fmt.Sprintf("  %-22s %s\n", styleLabel.Render("Crab Permit ($500):"), crabStatus))
 	b.WriteString(fmt.Sprintf("  %-22s %s\n\n", styleLabel.Render("Groundfish Permit ($1,500):"), groundfishStatus))
