@@ -218,7 +218,6 @@ func (m model) viewDockContent() string {
 	}{
 		{"Fire Extinguisher", m.gs.HasFireExtinguisher, true, "required — $350 at wharf"},
 		{"Life Raft", m.gs.HasLifeRaft, true, "required — $2,000 at wharf"},
-		{"Grapple Hook", m.gs.HasGrapple, false, "$500 at wharf"},
 		{"VHF Radio", m.gs.HasVHF, false, "$500 at wharf — required for distress events"},
 	}
 	for _, s := range safetyItems {
