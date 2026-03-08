@@ -318,6 +318,8 @@ type GameState struct {
 	// Daily market prices by grade [chix, quarters, selects, jumbos, supers, culls]
 	DailyPrices  [7]float64 `json:"daily_prices"`
 	HotCrabZone  string     `json:"hot_crab_zone"`  // zone ID with heavy crab today, "" = none
+	HotFishZone  string     `json:"hot_fish_zone"`  // zone running +40% today
+	ColdFishZone string     `json:"cold_fish_zone"` // zone running -25% today
 	DieselPrice  float64    `json:"diesel_price"`  // $/gal, marine diesel
 	BaitPrice    float64    `json:"bait_price"`    // $/lb, fresh herring spot price
 
@@ -460,6 +462,33 @@ func RollHotCrabZone() string {
 	return zones[rand.Intn(len(zones))]
 }
 
+// RollHotFishZone picks today's hot zone (+40%) and cold zone (-25%).
+// Nearshore zones (A-D) are weighted 3x more likely to be hot — they're volatile.
+// Hot and cold are always different zones.
+func RollHotFishZone() (hot, cold string) {
+	weights := []struct {
+		id     string
+		weight int
+	}{
+		{"A", 3}, {"B", 3}, {"C", 3}, {"D", 3}, {"E", 1}, {"F", 1}, {"G", 1},
+	}
+	pick := func(exclude string) string {
+		pool := []string{}
+		for _, w := range weights {
+			if w.id == exclude {
+				continue
+			}
+			for i := 0; i < w.weight; i++ {
+				pool = append(pool, w.id)
+			}
+		}
+		return pool[rand.Intn(len(pool))]
+	}
+	hot = pick("")
+	cold = pick(hot)
+	return hot, cold
+}
+
 // gradeDistribution returns fractions (must sum to 1.0) for
 // [chix, quarters, halves, selects, deuces, jumbos, culls]
 // Jumbos (3.0+ lb) only appear meaningfully in zones E-G
@@ -515,6 +544,14 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	// Hydraulic hauler + davit — haul more pots, swing them aboard faster
 	if gs.HasUpgHauler {
 		catchLbs *= 1.30
+	}
+
+	// Daily hot/cold zone modifiers
+	if gs.HotFishZone == zone.ID {
+		catchLbs *= 1.40
+	}
+	if gs.ColdFishZone == zone.ID {
+		catchLbs *= 0.75
 	}
 
 	if catchLbs < 0 {
@@ -942,6 +979,19 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		contextual = append(contextual,
 			fmt.Sprintf("Jimmy at the co-op says Zone %s is all crabbed up. Said it like it was a bad thing. Man doesn't have a crab permit.", gs.HotCrabZone),
 			fmt.Sprintf("Word around the dock is Zone %s is running heavy crab. Take it or leave it.", gs.HotCrabZone),
+		)
+	}
+	if gs.HotFishZone != "" {
+		contextual = append(contextual,
+			fmt.Sprintf("Heard Zone %s is stacked this morning. Temperature break moved through last night. Worth a look.", gs.HotFishZone),
+			fmt.Sprintf("Donnie Beal was out at 0400. Said Zone %s was loaded when he pulled his first string. Take it for what it's worth.", gs.HotFishZone),
+			fmt.Sprintf("Co-op radio's been lighting up about Zone %s all morning. Tide's running right out there today.", gs.HotFishZone),
+		)
+	}
+	if gs.ColdFishZone != "" {
+		contextual = append(contextual,
+			fmt.Sprintf("Zone %s's been quiet all week. Water temp dropped, lobsters moved. Save your fuel.", gs.ColdFishZone),
+			fmt.Sprintf("Ricky Pease pulled his gear out of Zone %s yesterday. Said it wasn't worth the diesel. Man knows the water.", gs.ColdFishZone),
 		)
 	}
 	if weather.Type == WeatherFog {

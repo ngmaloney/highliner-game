@@ -563,6 +563,10 @@ func (m model) viewChartContent() string {
 		switch {
 		case m.zoneBlocked(i):
 			zs = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+		case m.gs.HotFishZone == z.ID:
+			zs = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF88")).Bold(true)
+		case m.gs.ColdFishZone == z.ID:
+			zs = lipgloss.NewStyle().Foreground(lipgloss.Color("#5599FF")).Bold(true)
 		case m.gs.HotCrabZone == z.ID:
 			zs = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Bold(true)
 		default:
@@ -577,10 +581,19 @@ func (m model) viewChartContent() string {
 	b.WriteString("\n")
 	b.WriteString(styleDim("  Sandy   Mud     Rocky   Shoals  Ledge   Mixed   Deep") + "\n\n")
 
+	if m.gs.HotFishZone != "" {
+		b.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF88")).Bold(true).Render(
+			fmt.Sprintf("★ Zone %s running hot today (+40%%)", m.gs.HotFishZone)) + "\n")
+	}
+	if m.gs.ColdFishZone != "" {
+		b.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#5599FF")).Render(
+			fmt.Sprintf("✗ Zone %s running cold today (-25%%)", m.gs.ColdFishZone)) + "\n")
+	}
 	if m.gs.HotCrabZone != "" {
 		b.WriteString("  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8C00")).Render(
-			fmt.Sprintf("🦀 Zone %s running heavy crab today", m.gs.HotCrabZone)) + "\n\n")
+			fmt.Sprintf("🦀 Zone %s running heavy crab today", m.gs.HotCrabZone)) + "\n")
 	}
+	b.WriteString("\n")
 
 	// Stats table — all plain text, color applied to whole row after padding
 	b.WriteString(subHeader("ZONE DETAILS", m.width))
@@ -597,16 +610,31 @@ func (m model) viewChartContent() string {
 
 		// Catchable % estimates per zone
 		mult := z.Multiplier * 100
+		// Apply hot/cold zone modifiers to displayed multiplier
+		effectiveMult := mult
+		isHot := m.gs.HotFishZone == z.ID
+		isCold := m.gs.ColdFishZone == z.ID
+		if isHot {
+			effectiveMult = mult * 1.40
+		} else if isCold {
+			effectiveMult = mult * 0.75
+		}
+
 		lobsterStr := "poor"
 		switch {
-		case mult >= 140:
+		case effectiveMult >= 140:
 			lobsterStr = "rich"
-		case mult >= 120:
+		case effectiveMult >= 120:
 			lobsterStr = "great"
-		case mult >= 100:
+		case effectiveMult >= 100:
 			lobsterStr = "good"
-		case mult >= 85:
+		case effectiveMult >= 85:
 			lobsterStr = "fair"
+		}
+		if isHot {
+			lobsterStr += " ★"
+		} else if isCold {
+			lobsterStr += " ✗"
 		}
 
 		crabFactor := 0.5 + (z.SteamHours/10.0)*0.8

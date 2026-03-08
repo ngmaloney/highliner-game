@@ -288,6 +288,7 @@ func (m *model) startMorning() {
 	m.gs.DieselPrice = RollDieselPrice()
 	m.gs.BaitPrice = RollBaitPrice()
 	m.gs.HotCrabZone = RollHotCrabZone()
+	m.gs.HotFishZone, m.gs.ColdFishZone = RollHotFishZone()
 
 	// Deferred vandalism — 30% already set the flag; now resolve it
 	if m.gs.PendingVandalism {
