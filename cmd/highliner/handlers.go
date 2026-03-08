@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,7 +22,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 25 {
+			if m.marketCursor < 27 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1063,6 +1064,23 @@ func (m *model) resolveEvent(key string) {
 		m.gs.TotalCatch += bonus
 		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Counted %.0f lbs out of one trap. Bait was perfect. Wish every trap fished like that.", bonus))
 
+	case EventEngineFire:
+		if ev.KeyA == "e" && key == "e" && m.gs.HasFireExtinguisher {
+			// Fought the fire — extinguisher gone, engine torched, towed home
+			m.gs.HasFireExtinguisher = false
+			m.gs.Engine = math.Max(0, m.gs.Engine-65)
+			m.gs.DayLost = true
+			m.addLogStyled(styleLogAmber, "  You put it out. Barely.")
+			m.addLog(styleDim("  Extinguisher empty. Engine compartment is black. Coast Guard tow back to Rockland."))
+			m.addLog(styleDim(fmt.Sprintf("  Engine down to %.0f%%. She'll run but she needs work.", m.gs.Engine)))
+			m.addLog(styleDim("  Day's done."))
+		} else {
+			// Abandoned ship — sink check
+			m.addLogStyled(styleDanger, "  You go over the side.")
+			m.boatSinks()
+			return
+		}
+
 	case EventFoundOldGear:
 		if key == ev.KeyA && m.gs.HasGrapple {
 			// Drag for it — recover some traps
@@ -1102,6 +1120,57 @@ func (m *model) resolveEvent(key string) {
 	m.phase = PhaseHauling
 	m.addLog("")
 	m.syncViewport()
+}
+
+// boatSinks is called when the vessel is lost. With a life raft the player
+// survives but is reset to an Eastern 22. Without one, it's game over.
+func (m *model) boatSinks() {
+	if m.gs.HasLifeRaft {
+		m.gs.HasLifeRaft = false
+		m.addLogStyled(styleDanger, "  ════════════════════════════════════════")
+		m.addLogStyled(styleDanger, "  SHE'S GOING DOWN")
+		m.addLogStyled(styleDanger, "  ════════════════════════════════════════")
+		m.addLog("  Life raft deployed. You get clear before she goes under.")
+		m.addLog(styleDim("  Coast Guard pulls you out of the water two hours later."))
+		m.addLog(styleDim("  You lost the boat. You lost the gear. Everything went down with her."))
+		m.addLog(styleDim("  But you're alive. The bank account survived. Start over."))
+		m.addLog("")
+
+		// Reset to Eastern 22 — keep money and loan, lose everything else
+		saved := m.gs.Money
+		savedLoan := m.gs.LoanBalance
+		savedHasLoan := m.gs.HasLoan
+		savedDay := m.gs.Day
+		savedSeason := m.gs.Season
+		*m.gs = *newGame()
+		m.gs.Money = saved
+		m.gs.LoanBalance = savedLoan
+		m.gs.HasLoan = savedHasLoan
+		m.gs.Day = savedDay
+		m.gs.Season = savedSeason
+		m.addLogStyled(styleLogGreen, "  You're back on the dock. Eastern 22 waiting at the float.")
+		m.addLogStyled(styleLogGreen, "  Start from scratch. You've done it before.")
+		m.phase = PhaseIdle
+		saveGame(m.gs)
+	} else {
+		// No life raft — game over
+		m.gameOverLines = []string{
+			"",
+			"  ████████████████████████████████████████",
+			"  SHE WENT DOWN",
+			"  ████████████████████████████████████████",
+			"",
+			"  No life raft. Nobody heard the mayday.",
+			"  The water is cold this time of year.",
+			"",
+			fmt.Sprintf("  %d days on the water.", m.gs.Day),
+			fmt.Sprintf("  %s in the bank.", moneyStr(m.gs.Money)),
+			"",
+			"  Press any key to exit.",
+		}
+		m.gameOver = true
+		os.Remove(savePath())
+	}
 }
 
 func (m *model) chargeDockFee() {
@@ -1439,6 +1508,32 @@ func (m *model) doBuy() {
 			m.gs.Money -= 3500
 			m.gs.HasBaitFreezer = true
 			m.confirmBuy = "Bait freezer installed. Buy 200 lbs at a time and stop hitting the wharf every morning."
+		}},
+		{"Fire Extinguisher", 350, func() {
+			if m.gs.HasFireExtinguisher {
+				m.confirmBuy = "Already have one mounted."
+				return
+			}
+			if m.gs.Money < 350 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(350), moneyStr(350-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 350
+			m.gs.HasFireExtinguisher = true
+			m.confirmBuy = "Extinguisher mounted in the engine box. One-time use."
+		}},
+		{"Emergency Life Raft", 600, func() {
+			if m.gs.HasLifeRaft {
+				m.confirmBuy = "Already have one secured on deck."
+				return
+			}
+			if m.gs.Money < 600 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(600), moneyStr(600-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 600
+			m.gs.HasLifeRaft = true
+			m.confirmBuy = "Life raft secured on deck. Hope you never need it."
 		}},
 		{"Grapple Hook", 500, func() {
 			if m.gs.HasGrapple {

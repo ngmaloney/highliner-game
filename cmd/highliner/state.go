@@ -330,7 +330,9 @@ type GameState struct {
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // +30% yield, slower hydraulic wear
 	HasLiveWell   bool `json:"has_live_well"`    // +10% sale price — lobsters arrive alive and lively
 	HasBaitFreezer bool `json:"has_bait_freezer"` // 500 lb bait capacity
-	HasGrapple     bool `json:"has_grapple"`      // recover lost gear from bottom
+	HasGrapple          bool `json:"has_grapple"`           // recover lost gear from bottom
+	HasFireExtinguisher bool `json:"has_fire_extinguisher"` // one-time use — fight engine fire
+	HasLifeRaft         bool `json:"has_life_raft"`         // one-time use — survive sinking
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 	HasDeckLights bool `json:"has_deck_lights"` // early departure, +10% catch
@@ -976,6 +978,41 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 		Desc:   "0845 — Billy Thurston on channel 68. Hauler seized up mid-string. Asking if anyone can help finish his last set. Offering a quarter share.",
 		KeyA:   "h", LabelA: "[H] Go help (lose ~25% of your haul, get a cut)",
 		KeyB:   "k", LabelB: "[K] Keep hauling your own gear",
+	})
+
+	events = append(events, RandomEvent{
+		Type: EventEngineFire,
+		Time: "1130",
+		Desc: func() string {
+			if gs.HasFireExtinguisher {
+				return "1130 — Smoke coming out of the engine box. She's running hot and something caught. You've got a fire extinguisher aboard."
+			}
+			return "1130 — Smoke out of the engine box. Something caught. No extinguisher. The smoke is getting thick."
+		}(),
+		KeyA: func() string {
+			if gs.HasFireExtinguisher {
+				return "e"
+			}
+			return "a"
+		}(),
+		LabelA: func() string {
+			if gs.HasFireExtinguisher {
+				return "[E] Fight it — use the extinguisher"
+			}
+			return "[A] Abandon ship — nothing to fight it with"
+		}(),
+		KeyB: func() string {
+			if gs.HasFireExtinguisher {
+				return "a"
+			}
+			return ""
+		}(),
+		LabelB: func() string {
+			if gs.HasFireExtinguisher {
+				return "[A] Abandon ship"
+			}
+			return ""
+		}(),
 	})
 
 	events = append(events, RandomEvent{

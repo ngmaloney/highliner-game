@@ -51,6 +51,7 @@ const (
 	EventDoubleLoaded
 	EventHelpNeighbor
 	EventFoundOldGear
+	EventEngineFire
 )
 
 type RandomEvent struct {
@@ -83,6 +84,8 @@ type model struct {
 	width             int
 	height            int
 	confirmBuy        string // for market confirmations
+	gameOver          bool
+	gameOverLines     []string
 	buyAmount         int
 	marketCursor      int
 	saveMsg           string
@@ -155,6 +158,13 @@ func (m model) Init() tea.Cmd {
 // ─── Update ──────────────────────────────────────────────────────────────────
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.gameOver {
+		if _, ok := msg.(tea.KeyMsg); ok {
+			return m, tea.Quit
+		}
+		return m, nil
+	}
+
 	switch msg := msg.(type) {
 
 	case haulTickMsg:

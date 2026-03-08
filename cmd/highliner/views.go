@@ -15,6 +15,15 @@ func (m model) View() string {
 		return "Loading HIGHLINER..."
 	}
 
+	if m.gameOver {
+		var b strings.Builder
+		b.WriteString(strings.Repeat("\n", m.height/4))
+		for _, line := range m.gameOverLines {
+			b.WriteString(styleDanger.Render(line) + "\n")
+		}
+		return b.String()
+	}
+
 	var b strings.Builder
 
 	// Full-width header
@@ -430,6 +439,28 @@ func (m model) viewMarketContent() string {
 			}
 			return fmt.Sprintf("500 lb capacity (now: %d lb) — stop buying bait every day", boat.BaitCap)
 		}()},
+		{"Fire Extinguisher", func() string {
+			if m.gs.HasFireExtinguisher {
+				return "owned"
+			}
+			return "$350"
+		}(), func() string {
+			if m.gs.HasFireExtinguisher {
+				return "✓ one-time use — fight an engine fire before abandoning"
+			}
+			return "one-time use — engine fire without one means abandoning ship"
+		}()},
+		{"Emergency Life Raft", func() string {
+			if m.gs.HasLifeRaft {
+				return "owned"
+			}
+			return "$600"
+		}(), func() string {
+			if m.gs.HasLifeRaft {
+				return "✓ one-time use — if she sinks, you survive"
+			}
+			return "one-time use — no raft means no second chances"
+		}()},
 		{"Grapple Hook", func() string {
 			if m.gs.HasGrapple {
 				return "owned"
@@ -791,7 +822,7 @@ func (m *model) syncAltViewport() {
 		// Compute which line the cursor is on.
 		// Section item counts: CREW=2, SUPPLIES=4, REPAIRS=3, EQUIPMENT=9, PERMITS=2, VESSELS=5
 		// Layout: subHeader(1) + items + gap(1) per section
-		wharfSectionCounts := []int{2, 4, 3, 10, 2, 5}
+		wharfSectionCounts := []int{2, 4, 3, 12, 2, 5}
 		cursor := m.marketCursor
 		line := 0
 		for _, count := range wharfSectionCounts {
