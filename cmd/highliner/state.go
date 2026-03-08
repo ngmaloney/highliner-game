@@ -1012,6 +1012,8 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Terry Beal had three good weeks in a row and already bought a new sled. Didn't fix his hauler, didn't pay down his trap loan — bought a sled. That's lobstering.",
 		"If the crab holds through September, Phil Robbins says he's finally getting that new camp upta Parlin Pond. Phil's been saying that since 2014.",
 		"Ricky Gray told his wife if he has one more week like last week she's getting a new kitchen. His wife said she'd rather have a new sled. Woman knows what matters.",
+		"Heard Daryl Sprague got pinched upta camp last weekend. Warden caught him with a doe and no tag. Rifle, freezer bags, the whole operation. IF&W don't play.",
+		"Gary Hutchins thought he was slick — bagged some camp meat two weeks before season. Game warden was parked at the end of the road the whole time. Lost his license, his rifle, and his dignity. In that order.",
 	}
 
 	var lines []string
