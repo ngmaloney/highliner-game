@@ -349,8 +349,8 @@ func (m *model) startMorning() {
 	m.addLog("")
 	m.addLog(m.logDivider(styleLogInfo, "MARKET"))
 	p := m.gs.DailyPrices
-	m.addLogStyled(styleLogInfo, fmt.Sprintf("  Chix $%.2f   Quarters $%.2f   Selects $%.2f   Jumbos $%.2f   Supers $%.2f   Culls $%.2f",
-		p[0], p[1], p[2], p[3], p[4], p[5]))
+	m.addLogStyled(styleLogInfo, fmt.Sprintf("  Chix $%.2f   Qtrs $%.2f   Halves $%.2f   Selects $%.2f   Deuces $%.2f   Jumbos $%.2f   Culls $%.2f",
+		p[0], p[1], p[2], p[3], p[4], p[5], p[6]))
 	m.addLog(fmt.Sprintf("  Diesel $%.2f/gal   Herring bait $%.2f/lb",
 		m.gs.DieselPrice, m.gs.BaitPrice))
 

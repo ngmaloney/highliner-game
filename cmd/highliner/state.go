@@ -316,7 +316,7 @@ type GameState struct {
 	TotalCatch  float64    `json:"total_catch_lbs"`
 	TotalRevenue float64    `json:"total_revenue"`
 	// Daily market prices by grade [chix, quarters, selects, jumbos, supers, culls]
-	DailyPrices  [6]float64 `json:"daily_prices"`
+	DailyPrices  [7]float64 `json:"daily_prices"`
 	HotCrabZone  string     `json:"hot_crab_zone"`  // zone ID with heavy crab today, "" = none
 	DieselPrice  float64    `json:"diesel_price"`  // $/gal, marine diesel
 	BaitPrice    float64    `json:"bait_price"`    // $/lb, fresh herring spot price
@@ -426,15 +426,16 @@ type HaulResult struct {
 }
 
 // RollDailyPrices generates co-op dock prices for the day
-func RollDailyPrices() [6]float64 {
+func RollDailyPrices() [7]float64 {
 	shift := rand.Float64()*0.60 - 0.30 // ±$0.30 market swing
-	return [6]float64{
-		math.Max(4.00, 5.75+shift),   // Chix
-		math.Max(5.00, 6.50+shift),   // Quarters
-		math.Max(6.00, 7.75+shift),   // Selects
-		math.Max(8.00, 10.50+shift),  // Jumbos
-		math.Max(11.00, 14.00+shift), // Super Jumbos
-		math.Max(2.50, 3.75+shift),   // Culls
+	return [7]float64{
+		math.Max(4.00, 4.75+shift),   // Chix       1.0–1.2 lb
+		math.Max(5.00, 5.75+shift),   // Quarters   1.25–1.4 lb
+		math.Max(6.00, 6.75+shift),   // Halves     1.5–1.7 lb
+		math.Max(7.00, 8.25+shift),   // Selects    1.75–2.4 lb
+		math.Max(9.00, 10.50+shift),  // Deuces     2.5–2.9 lb
+		math.Max(11.00, 13.00+shift), // Jumbos     3.0–4.0 lb
+		math.Max(2.50, 3.50+shift),   // Culls
 	}
 }
 
@@ -459,26 +460,26 @@ func RollHotCrabZone() string {
 }
 
 // gradeDistribution returns fractions (must sum to 1.0) for
-// [chix, quarters, selects, jumbos, super jumbos, culls]
-// Super Jumbos (2.5+ lb) only appear meaningfully in zones F and G
-func gradeDistribution(zone Zone) [6]float64 {
+// [chix, quarters, halves, selects, deuces, jumbos, culls]
+// Jumbos (3.0+ lb) only appear meaningfully in zones E-G
+func gradeDistribution(zone Zone) [7]float64 {
 	switch zone.ID {
-	case "A": // nearshore, heavily fished — mostly chix, no super jumbos
-		return [6]float64{0.60, 0.20, 0.10, 0.02, 0.00, 0.08}
+	case "A": // nearshore, heavily fished — mostly chix and quarters
+		return [7]float64{0.45, 0.25, 0.12, 0.07, 0.02, 0.01, 0.08}
 	case "B":
-		return [6]float64{0.50, 0.25, 0.15, 0.03, 0.00, 0.07}
+		return [7]float64{0.38, 0.24, 0.14, 0.10, 0.04, 0.03, 0.07}
 	case "C": // mudhole — soft bottom, decent mix
-		return [6]float64{0.40, 0.27, 0.20, 0.05, 0.01, 0.07}
+		return [7]float64{0.30, 0.24, 0.17, 0.13, 0.05, 0.04, 0.07}
 	case "D": // classic zone, crowded
-		return [6]float64{0.47, 0.26, 0.16, 0.04, 0.00, 0.07}
-	case "E": // outer ledges — better mix, occasional super jumbos
-		return [6]float64{0.29, 0.27, 0.25, 0.10, 0.02, 0.07}
-	case "F": // the rip — prime grounds, real chance at super jumbos
-		return [6]float64{0.20, 0.24, 0.28, 0.16, 0.05, 0.07}
-	case "G": // deep cold water — best grade, most super jumbos
-		return [6]float64{0.13, 0.20, 0.28, 0.22, 0.10, 0.07}
+		return [7]float64{0.35, 0.25, 0.15, 0.12, 0.04, 0.02, 0.07}
+	case "E": // outer ledges — better mix, jumbos start showing up
+		return [7]float64{0.20, 0.22, 0.20, 0.17, 0.08, 0.06, 0.07}
+	case "F": // the rip — prime grounds, real jumbos
+		return [7]float64{0.13, 0.17, 0.20, 0.20, 0.13, 0.10, 0.07}
+	case "G": // deep cold water — best grade, most jumbos
+		return [7]float64{0.08, 0.13, 0.18, 0.22, 0.17, 0.15, 0.07}
 	default:
-		return [6]float64{0.44, 0.25, 0.18, 0.05, 0.01, 0.07}
+		return [7]float64{0.33, 0.24, 0.16, 0.12, 0.05, 0.03, 0.07}
 	}
 }
 
@@ -522,15 +523,15 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	// Use today's rolled prices (set at morning by RollDailyPrices)
 	basePrices := gs.DailyPrices
-	gradeNames := [6]string{"Chix", "Quarters", "Selects", "Jumbos", "Supers", "Culls"}
+	gradeNames := [7]string{"Chix", "Quarters", "Halves", "Selects", "Deuces", "Jumbos", "Culls"}
 	dist := gradeDistribution(zone)
 
 	// Minimum weight to have any lobsters of a given grade (one lobster minimum)
 	// [chix, quarters, selects, jumbos, supers, culls]
-	gradeMinLbs := [6]float64{1.0, 1.25, 1.5, 2.5, 4.0, 1.0}
+	gradeMinLbs := [7]float64{1.0, 1.25, 1.5, 1.75, 2.5, 3.0, 1.0}
 
 	// First pass: compute raw lbs per grade; zero out grades below minimum
-	rawLbs := [6]float64{}
+	rawLbs := [7]float64{}
 	spillover := 0.0
 	for i := 0; i < 6; i++ {
 		lbs := catchLbs * dist[i]

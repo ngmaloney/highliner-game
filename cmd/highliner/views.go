@@ -246,7 +246,7 @@ func (m model) viewMarketContent() string {
 
 	// Today's co-op dock prices
 	p := m.gs.DailyPrices
-	gradeNames := [6]string{"Chix", "Qtr", "Select", "Jumbo", "Super", "Cull"}
+	gradeNames := [7]string{"Chix", "Qtr", "Half", "Select", "Deuce", "Jumbo", "Cull"}
 	b.WriteString("  ")
 	for i, name := range gradeNames {
 		b.WriteString(fmt.Sprintf("%s $%.2f  ", styleLabel.Render(name), p[i]))
