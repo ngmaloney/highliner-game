@@ -332,6 +332,12 @@ func (m *model) startMorning() {
 	}
 
 	m.addLog("")
+	m.addLog(m.logDivider(styleLogInfo, "DOCK GOSSIP"))
+	for _, line := range RollMorningGossip(m.gs, m.weather) {
+		m.addLogStyled(styleLogDeck, fmt.Sprintf("  %s", line))
+	}
+
+	m.addLog("")
 	m.addLog(m.logDivider(styleLogInfo, "MARKET"))
 	p := m.gs.DailyPrices
 	m.addLogStyled(styleLogInfo, fmt.Sprintf("  Chix $%.2f   Quarters $%.2f   Selects $%.2f   Jumbos $%.2f   Supers $%.2f   Culls $%.2f",

@@ -941,6 +941,76 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 	return &e
 }
 
+// RollMorningGossip returns 1-2 lines of dock gossip for the morning briefing
+func RollMorningGossip(gs *GameState, weather Weather) []string {
+	// Contextual lines that reference actual game state
+	var contextual []string
+	if gs.HotCrabZone != "" {
+		contextual = append(contextual,
+			fmt.Sprintf("Jimmy at the co-op says Zone %s is all crabbed up. Said it like it was a bad thing. Man doesn't have a crab permit.", gs.HotCrabZone),
+			fmt.Sprintf("Word around the dock is Zone %s is running heavy crab. Take it or leave it.", gs.HotCrabZone),
+		)
+	}
+	if weather.Type == WeatherFog {
+		contextual = append(contextual,
+			"Thick out there this morning. Ronnie Thurston went out anyway. Ronnie Thurston also drives without his glasses. Connect the dots.",
+			"Fog so thick you can't see the end of the dock. Pete Whitmore called it 'good visibility' and went out. Pete's wife looks nervous.",
+		)
+	}
+	if weather.Type == WeatherSCA || weather.Type == WeatherGale {
+		contextual = append(contextual,
+			"Nobody's going out in this. Well. Crazy Eddie might. That's how he got the name.",
+			"Coast Guard's been on the radio all morning. Stay in port and let 'em earn their pay.",
+		)
+	}
+	if gs.Engine < 50 {
+		contextual = append(contextual,
+			"Leroy's engine seized up mid-string last week. Fixed it with wire and a prayer. Said it's 'good as new.' Check your oil.",
+		)
+	}
+
+	// Static gossip pool — salty Maine humor
+	static := []string{
+		"Frankie Greenlaw bought a new boat. Three hundred thousand dollars. His wife left two days later. Cheaper to keep 'er, Frankie.",
+		"Beautiful morning. Ruined by running into Dave Peasley at the fuel dock at 0430. Man talks like he's getting paid by the word.",
+		"Waterfront restaurant in town's charging $38 for a lobster roll. Thirty-eight dollars. We pull 'em for six bucks a pound and some flatlander pays $38 for a sandwich.",
+		"Co-op's new scale's been reading light. Mickey Ames weighed his boat dog on it — said 38 lbs. Dog's at least 50. We're getting robbed.",
+		"State inspector came through Stonington yesterday checking V-notches. Couldn't tell a hen from a buoy. Sent him back to Augusta.",
+		"New summer people put their kayak in the middle of the channel again. Tommy nearly ran 'em over. Said he tried to miss but couldn't decide which way they'd go.",
+		"Heard Stevie Pomerleau's been 'fishing' Zone B all week. His wife says he's fishing. Co-op says his boat ain't moved. You do the math.",
+		"Eddie from the fuel dock says diesel's going up next week. Eddie also said the Red Sox were gonna win the Series. Take that for what it's worth.",
+		"Old Pete Whitmore got new L.L. Bean foul weather gear. Boys at the co-op said he looked like a goddamn lobster himself. He did not take it well.",
+		"Ronnie Thurston's been bragging about pulling a 7-pounder. Nobody believes him. Man can barely pull his pants up straight.",
+		"Jimmy at the co-op says Zone D was loaded yesterday. Jimmy also charges $4 for coffee. Man's judgment is suspect across the board.",
+		"Fog rolled in on Ricky Pease out by the outer ledges. Found him going in circles an hour later. Second time this month. 'Bought a GPS,' he says. Ayuh.",
+		"Marcy at the bait shed says herring's gonna be scarce next month. Course Marcy also named her cat 'Diesel' and feeds it tuna. Woman's a mystery.",
+		"Selectman wants to put a hotel on the waterfront. Over my dead body. Over a lot of dead bodies, actually — that's where we keep our gear.",
+		"Summer people keep waving at the lobster boats from their sailboats. Captain Danny started waving back with one finger. Progress.",
+		"Heard Zone E was stacked last week. Also heard it's been picked clean since. Take your chances and your diesel.",
+		"Bait's running high. Forty cents a pound more than last month. You're not fishing, you're feeding herring to the ocean.",
+		"Leroy's hauler seized up mid-string Tuesday. Fixed it with a piece of wire and a prayer. Says it's good as new. Don't fish downwind of Leroy.",
+		"Some college kid from UMaine's doing a 'study' on lobster migration. Been following boats around with a clipboard. We've been giving him bad data.",
+		"Heard the DMR's sending out more wardens this month. Keep your V-notch throwbacks clean and your permits handy.",
+		"Donnie Beal's been out since 0400 every day this week. Man's 74 years old. Makes the rest of us look bad. Intentionally, I think.",
+		"Young kid from away bought a boat, painted it white, named it 'Sea Renity.' She sank at the mooring first night. Universe has a sense of humor.",
+		"Tide's been running strong in Zone B all week. Lost two traps to that current this month. You've been warned and I've stopped warning.",
+		"Danny Coombs got a stern camera. Says it's for 'safety.' His wife says she checks the footage every night. Different kind of safety.",
+		"Price of lobster at the grocery store in Ellsworth is $24.99 a pound. We're getting $6. The math on that doesn't work in our favor.",
+		"Heard there's a whale been working the outer ledges. Good news: lobster run away from whales. Bad news: so does your gear.",
+		"Harold from the trap shop says wire mesh is backordered six weeks. Buy what you need now or you'll be knitting your own.",
+	}
+
+	var lines []string
+	// Maybe add a contextual line
+	if len(contextual) > 0 && rand.Float64() < 0.60 {
+		lines = append(lines, contextual[rand.Intn(len(contextual))])
+	}
+	// Always add one static line
+	lines = append(lines, static[rand.Intn(len(static))])
+
+	return lines
+}
+
 // DeckLog returns a contextual flavor text entry for the end-of-day summary
 func DeckLog(gs *GameState, zone Zone, result HaulResult) string {
 	// Collect all matching entries
