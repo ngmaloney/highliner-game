@@ -556,7 +556,7 @@ func (m model) viewChartContent() string {
 	b.WriteString("\n")
 
 	// column widths (plain chars): Z=1 Name=22 Steam=5 Fuel=7 Lobster=7 Crab=6 Fish=6 Notes
-	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-6s  %-6s  %s",
+	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-10s  %-6s  %s",
 		"Z", "Name", "Steam", "Fuel", "Lobster", "Crab", "Fish", "Notes")
 	b.WriteString(styleLogInfo.Render(hdr) + "\n")
 	b.WriteString("  " + styleDim(strings.Repeat("─", len(hdr)-2)) + "\n")
@@ -582,7 +582,7 @@ func (m model) viewChartContent() string {
 
 		crabStr := fmt.Sprintf("~%d%%", crabPct)
 		if m.gs.HotCrabZone == z.ID {
-			crabStr = fmt.Sprintf("~%d%%🦀", crabPct)
+			crabStr = fmt.Sprintf("~%d%% HOT", crabPct)
 		}
 		fishStr := "-"
 		if fishPct > 0 {
@@ -600,7 +600,7 @@ func (m model) viewChartContent() string {
 		}
 
 		// Build the plain row, then color the whole thing
-		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-7s %-7s %s",
+		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-10s  %-6s  %s",
 			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterPct, crabStr, fishStr, notes)
 
 		var rowColor lipgloss.Color
