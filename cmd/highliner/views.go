@@ -266,7 +266,7 @@ func (m model) viewMarketContent() string {
 	// Supplies section
 	supplyItems := []wharfItem{
 		{"Bait (50 lbs)", fmt.Sprintf("$%.0f", 50*m.gs.BaitPrice), fmt.Sprintf("Herring @ $%.2f/lb — roughly one day on 20 traps", m.gs.BaitPrice)},
-		{"Bait (200 lbs)", fmt.Sprintf("$%.0f", 200*m.gs.BaitPrice), fmt.Sprintf("Bulk herring @ $%.2f/lb — 3-4 days supply", m.gs.BaitPrice)},
+		{"Bait (200 lbs)", fmt.Sprintf("$%.0f", 200*m.gs.BaitPrice*0.85), fmt.Sprintf("Bulk herring @ $%.2f/lb — 15%% discount, 3-4 days supply", m.gs.BaitPrice*0.85)},
 		{"Fuel", func() string {
 			needed := BoatModels[m.gs.BoatName].FuelCap - m.gs.Fuel
 			if needed <= 0 {

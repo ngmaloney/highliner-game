@@ -1205,31 +1205,37 @@ func (m *model) doBuy() {
 			m.confirmBuy = "Experienced hand hired. He knows what he's doing."
 		}},
 		// SUPPLIES
-		{"Bait (50 lbs)", 30.00, func() {
+		{"Bait (50 lbs)", 0, func() {
 			cap := BoatModels[m.gs.BoatName].BaitCap
 			if m.gs.Bait >= cap {
 				m.confirmBuy = "Bait storage full!"
 				return
 			}
 			add := min(50, cap-m.gs.Bait)
+			cost := float64(add) * m.gs.BaitPrice
+			if m.gs.Money < cost {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(cost), moneyStr(cost-m.gs.Money))
+				return
+			}
+			m.gs.Money -= cost
 			m.gs.Bait += add
-			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring", add)
+			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring for %s", add, moneyStr(cost))
 		}},
-		{"Bait (200 lbs)", 110.00, func() {
+		{"Bait (200 lbs)", 0, func() {
 			cap := BoatModels[m.gs.BoatName].BaitCap
 			if m.gs.Bait >= cap {
 				m.confirmBuy = "Bait storage full!"
 				return
 			}
 			add := min(200, cap-m.gs.Bait)
-			cost := float64(add) * m.gs.BaitPrice
+			cost := float64(add) * m.gs.BaitPrice * 0.85
 			if m.gs.Money < cost {
-				m.confirmBuy = fmt.Sprintf("Need %s", moneyStr(cost))
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(cost), moneyStr(cost-m.gs.Money))
 				return
 			}
 			m.gs.Money -= cost
 			m.gs.Bait += add
-			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring for %s", add, moneyStr(cost))
+			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring for %s (bulk rate)", add, moneyStr(cost))
 		}},
 		{"Fuel", 0, func() {
 			boat := BoatModels[m.gs.BoatName]
