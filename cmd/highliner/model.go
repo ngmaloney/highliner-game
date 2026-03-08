@@ -541,6 +541,9 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 	case PhaseDecision:
 		if m.activeEvent != nil {
 			m.resolveEvent(key)
+			if len(m.pendingLines) > 0 {
+				return m, tickHaul()
+			}
 		}
 
 	case PhaseSell:
