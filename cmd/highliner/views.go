@@ -34,11 +34,10 @@ func (m model) View() string {
 		label  string
 		screen Screen
 	}{
-		{"[1/] LOG", ScreenLog},
-		{"[2/M] MAINT", ScreenMaintenance},
-		{"[3/V] VESSEL", ScreenDock},
-		{"[4/W] WHARF", ScreenMarket},
-		{"[5/G] GROUNDS", ScreenChart},
+		{"[1/H] HELM", ScreenLog},
+		{"[2/V] VESSEL", ScreenDock},
+		{"[3/W] WHARF", ScreenMarket},
+		{"[4/G] GROUNDS", ScreenChart},
 	}
 	for _, t := range tabs {
 		if t.screen == m.screen {
@@ -149,27 +148,31 @@ func (m model) View() string {
 
 // ─── Screen Content Builders ─────────────────────────────────────────────────
 
-func (m model) viewMaintenanceContent() string {
+func (m model) viewDockContent() string {
 	var b strings.Builder
-
-	b.WriteString(sectionHeader("BOAT MAINTENANCE DIAGNOSTICS", m.width))
-
 	boat := BoatModels[m.gs.BoatName]
-	b.WriteString(fmt.Sprintf("  %s  %s\n",
-		styleLabel.Render("Vessel:"),
-		styleValue.Render(fmt.Sprintf("%s — %s (%d ft)", m.gs.VesselName, m.gs.BoatName, boat.Length))))
-	b.WriteString("\n")
 
+	b.WriteString(sectionHeader("VESSEL STATUS", m.width))
+
+	vesselDisplay := m.gs.VesselName
+	if vesselDisplay == "" {
+		vesselDisplay = m.gs.BoatName
+	} else {
+		vesselDisplay = fmt.Sprintf("%s — %s (%d ft)", m.gs.VesselName, m.gs.BoatName, boat.Length)
+	}
+	b.WriteString(fmt.Sprintf("  %s  %s\n\n", styleLabel.Render("Vessel:"), styleValue.Render(vesselDisplay)))
+
+	// ── HEALTH ──────────────────────────────────────────────────────────────
+	b.WriteString(subHeader("HEALTH", m.width))
 	components := []struct {
 		name   string
 		health float64
 		repair string
 	}{
-		{"Engine", m.gs.Engine, fmt.Sprintf("$%.0f to repair", (100-m.gs.Engine)*12.0)},
-		{"Zincs", m.gs.Zincs, fmt.Sprintf("$%.0f to replace", (100-m.gs.Zincs)*3.0)},
-		{"Hydraulics", m.gs.Hydraulics, fmt.Sprintf("$%.0f to repair", (100-m.gs.Hydraulics)*8.0)},
+		{"Engine", m.gs.Engine, fmt.Sprintf("$%.0f to repair  (below 25%% = breakdown risk)", (100-m.gs.Engine)*12.0)},
+		{"Zincs", m.gs.Zincs, fmt.Sprintf("$%.0f to replace  (below 20%% = hull corrosion)", (100-m.gs.Zincs)*3.0)},
+		{"Hydraulics", m.gs.Hydraulics, fmt.Sprintf("$%.0f to repair  (below 25%% = hauler failure)", (100-m.gs.Hydraulics)*8.0)},
 	}
-
 	for _, c := range components {
 		bar := healthBar(c.health, 30)
 		status := healthStatus(c.health)
@@ -189,39 +192,14 @@ func (m model) viewMaintenanceContent() string {
 		b.WriteString(fmt.Sprintf("  %-14s %s\n\n", "", styleDim(c.repair)))
 	}
 
-	b.WriteString("\n")
-	b.WriteString(subHeader("REPAIR TIPS", m.width))
-	b.WriteString("  Engine below 25% = risk of breakdown at sea\n")
-	b.WriteString("  Zincs below 20% = hull corrodes faster\n")
-	b.WriteString("  Hydraulics below 25% = hauler may fail mid-haul\n")
-	b.WriteString("\n")
-	b.WriteString(styleKey.Render("  Press [W] to go to Wharf for repairs"))
-	b.WriteString("\n")
-	b.WriteString(styleDim("  [↑↓/JK] Scroll"))
-
-	return b.String()
-}
-
-func (m model) viewDockContent() string {
-	var b strings.Builder
-	boat := BoatModels[m.gs.BoatName]
-
-	b.WriteString(sectionHeader("DOCK MANAGEMENT", m.width))
-
-	vesselDisplay := m.gs.VesselName
-	if vesselDisplay == "" {
-		vesselDisplay = m.gs.BoatName
-	} else {
-		vesselDisplay = fmt.Sprintf("%s — %s (%d ft)", m.gs.VesselName, m.gs.BoatName, boat.Length)
-	}
-	b.WriteString(fmt.Sprintf("  %s  %s\n\n", styleLabel.Render("Vessel:"), styleValue.Render(vesselDisplay)))
-
+	// ── GEAR & SUPPLIES ──────────────────────────────────────────────────────
 	b.WriteString(subHeader("GEAR & SUPPLIES", m.width))
 	b.WriteString(fmt.Sprintf("  %s %s / %d max\n", label("Traps:", 12), styleValue.Render(fmt.Sprintf("%d", m.gs.Traps)), boat.MaxTraps))
 	b.WriteString(fmt.Sprintf("  %s %s / %d lbs cap\n", label("Bait:", 12), styleValue.Render(fmt.Sprintf("%d", m.gs.Bait)), boat.BaitCap))
 	b.WriteString(fmt.Sprintf("  %s %s / %d gal cap\n", label("Fuel:", 12), styleValue.Render(fmt.Sprintf("%d gal", m.gs.Fuel)), boat.FuelCap))
 	b.WriteString(fmt.Sprintf("  %s %s lbs\n\n", label("Hold:", 12), styleValue.Render(fmt.Sprintf("%.1f", m.gs.Freezer))))
 
+	// ── FINANCES ─────────────────────────────────────────────────────────────
 	b.WriteString(subHeader("FINANCES", m.width))
 	b.WriteString(fmt.Sprintf("  %s %s\n", label("Cash:", 12), moneyStyled(m.gs.Money)))
 	if m.gs.BankLoan > 0 {
@@ -231,27 +209,30 @@ func (m model) viewDockContent() string {
 	b.WriteString(fmt.Sprintf("  %s %.0f lbs\n", label("Total catch:", 12), m.gs.TotalCatch))
 	b.WriteString(fmt.Sprintf("  %s %s\n\n", label("Revenue:", 12), styleValue.Render(moneyStr(m.gs.TotalRevenue))))
 
+	// ── FLEET PROGRESSION ────────────────────────────────────────────────────
 	b.WriteString(subHeader("FLEET PROGRESSION", m.width))
-	fleetOrder := []string{"Eastern 22", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
+	fleetOrder := []string{"Eastern 22", "Crowley Beal 28", "Calvin Beal 34", "Duffy 35", "Young Bros 40", "Wesmac 46"}
 	for _, name := range fleetOrder {
 		bm := BoatModels[name]
 		if name == m.gs.BoatName {
 			b.WriteString(fmt.Sprintf("  ► %s  %d traps  %d ft\n",
-				styleGood.Render(fmt.Sprintf("%-16s", name)), bm.MaxTraps, bm.Length))
+				styleGood.Render(fmt.Sprintf("%-18s", name)), bm.MaxTraps, bm.Length))
 		} else if bm.Cost <= int(m.gs.Money) {
 			b.WriteString(fmt.Sprintf("    %s  %d traps  %s\n",
-				styleValue.Render(fmt.Sprintf("%-16s", name)), bm.MaxTraps, styleGood.Render(fmt.Sprintf("$%d — can afford!", bm.Cost))))
+				styleValue.Render(fmt.Sprintf("%-18s", name)), bm.MaxTraps, styleGood.Render(fmt.Sprintf("$%d — can afford!", bm.Cost))))
 		} else {
 			b.WriteString(fmt.Sprintf("    %s  %d traps  %s\n",
-				styleDim(fmt.Sprintf("%-16s", name)), bm.MaxTraps, styleDim(fmt.Sprintf("$%d", bm.Cost))))
+				styleDim(fmt.Sprintf("%-18s", name)), bm.MaxTraps, styleDim(fmt.Sprintf("$%d", bm.Cost))))
 		}
 	}
 	b.WriteString("\n")
-	b.WriteString(styleDim("  [↑↓/JK] Scroll  [W] Go to Wharf"))
+	b.WriteString(styleDim("  [↑↓/JK] Scroll  [W] Go to Wharf for repairs & supplies"))
 	b.WriteString("\n")
 
 	return b.String()
 }
+
+func (m model) viewMaintenanceContent() string { return m.viewDockContent() }
 
 func (m model) viewMarketContent() string {
 	var b strings.Builder

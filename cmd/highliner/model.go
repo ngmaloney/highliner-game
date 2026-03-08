@@ -183,7 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			saveGame(m.gs)
 			return m, tea.Quit
 
-		case "1", "/":
+		case "1", "h":
 			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenLog
 				m.confirmBuy = ""
@@ -191,23 +191,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				return m.handlePhaseKey(msg.String())
 			}
-		case "2", "m":
+		case "2", "v":
 			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
-				m.screen = ScreenMaintenance
+				m.screen = ScreenDock
 				m.confirmBuy = ""
 				m.syncAltViewport()
 			} else {
 				return m.handlePhaseKey(msg.String())
 			}
-		case "3", "v":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
-				m.screen = ScreenDock // VESSEL tab
-				m.confirmBuy = ""
-				m.syncAltViewport()
-			} else {
-				return m.handlePhaseKey(msg.String())
-			}
-		case "4", "w":
+		case "3", "w":
 			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenMarket
 				m.confirmBuy = ""
@@ -216,7 +208,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				return m.handlePhaseKey(msg.String())
 			}
-		case "5", "g":
+		case "4", "g":
 			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenChart
 				m.syncAltViewport()
@@ -226,7 +218,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		default:
 			// Scroll alt viewport on non-interactive screens
-			if m.screen == ScreenMaintenance || m.screen == ScreenDock {
+			if m.screen == ScreenDock {
 				switch msg.String() {
 				case "up", "k":
 					m.altVP.LineUp(1)
