@@ -1,6 +1,6 @@
 # 🦞 HIGHLINER
 
-![HIGHLINER Cover Art](highliner-cover.png)
+![HIGHLINER Cover Art](assets/highliner-cover.png)
 
 > *Bait. Set. Haul.*
 
