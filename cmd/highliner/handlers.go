@@ -264,6 +264,15 @@ func (m *model) doNextDay() {
 		m.chargeDockFee()
 		m.addLog("")
 		m.addLogStyled(styleKey, "  [ENTER/S] Skip to co-op   [W] Wharf   [M] Maintenance")
+	} else if m.gs.DayLost {
+		m.gs.DayLost = false
+		m.phase = PhaseMorning
+		m.addLog("")
+		m.addLogStyled(styleLogDanger, "  Spent the day dealing with the Coast Guard paperwork.")
+		m.addLogStyled(styleLogDanger, "  Can't make it out today. Day wasted.")
+		m.chargeDockFee()
+		m.addLog("")
+		m.addLogStyled(styleKey, "  [ENTER/S] Skip to co-op   [W] Wharf   [M] Maintenance")
 	} else {
 		m.phase = PhaseMorning
 		m.gs.DaysWithBooze = 0
@@ -769,7 +778,7 @@ func (m *model) resolveEvent(key string) {
 				fine := 5000.0
 				m.gs.Money -= fine
 				m.addLogStyled(styleLogDanger, "  Coast Guard was waiting at the dock. $5,000 fine. One day lost.")
-				m.gs.Hungover = true
+				m.gs.DayLost = true
 			}
 		} else {
 			m.addLog("  CG thanks you on the radio. You feel okay about it.")

@@ -310,7 +310,8 @@ type GameState struct {
 	BankLoan     float64 `json:"bank_loan"`
 	CrewWage     float64 `json:"crew_wage_daily"` // $0 for solo Eastern 22
 	DaysWithBooze int  `json:"days_with_booze"` // consecutive nights drinking
-	Hungover      bool `json:"hungover"`        // can't fish next day
+	Hungover      bool `json:"hungover"`        // can't fish next day (booze)
+	DayLost       bool `json:"day_lost"`        // can't fish next day (other)
 	LastWeather string     `json:"last_weather"`
 	TotalCatch  float64    `json:"total_catch_lbs"`
 	TotalRevenue float64    `json:"total_revenue"`
