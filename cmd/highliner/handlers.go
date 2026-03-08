@@ -514,6 +514,7 @@ func (m *model) buildDebriefLines(result HaulResult, queue *[]string) {
 
 	zone := m.currentZone
 	deckEntry := DeckLog(m.gs, zone, result)
+	addQS(styleLogInfo, "  CHANNEL 68")
 	addQS(styleLogDeck, fmt.Sprintf("  \"%s\"", deckEntry))
 	addQ("")
 }
