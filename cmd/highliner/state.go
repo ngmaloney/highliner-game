@@ -515,14 +515,32 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	gradeNames := [6]string{"Chix", "Quarters", "Selects", "Jumbos", "Supers", "Culls"}
 	dist := gradeDistribution(zone)
 
+	// Minimum weight to have any lobsters of a given grade (one lobster minimum)
+	// [chix, quarters, selects, jumbos, supers, culls]
+	gradeMinLbs := [6]float64{1.0, 1.25, 1.5, 2.5, 4.0, 1.0}
+
+	// First pass: compute raw lbs per grade; zero out grades below minimum
+	rawLbs := [6]float64{}
+	spillover := 0.0
+	for i := 0; i < 6; i++ {
+		lbs := catchLbs * dist[i]
+		if lbs > 0 && lbs < gradeMinLbs[i] {
+			spillover += lbs // too few for even one lobster — add back to chix
+			rawLbs[i] = 0
+		} else {
+			rawLbs[i] = lbs
+		}
+	}
+	rawLbs[0] += spillover // redistribute sub-minimum grades into chix
+
 	var grades []GradeResult
 	revenue := 0.0
 	for i := 0; i < 6; i++ {
-		lbs := catchLbs * dist[i]
+		lbs := rawLbs[i]
 		price := basePrices[i]
 		if price < 0 { price = 0 }
 		revenue += lbs * price
-		if lbs >= 0.5 { // only show grades with meaningful weight
+		if lbs >= gradeMinLbs[i] {
 			grades = append(grades, GradeResult{Name: gradeNames[i], Lbs: lbs, Price: price})
 		}
 	}
