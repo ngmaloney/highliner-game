@@ -1825,6 +1825,9 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasExhaustHX { return "✓ engine runs cooler, less wear" }
 			return "reduces engine wear per haul"
 		}()},
+	}
+
+	permitItems := []wharfItem{
 		{"Crab Permit", func() string {
 			if m.gs.HasCrabPermit { return "licensed" }
 			return "$500"
@@ -1845,6 +1848,7 @@ func (m model) viewMarketContent() string {
 
 	allItems := append(supplyItems, repairItems...)
 	allItems = append(allItems, equipItems...)
+	allItems = append(allItems, permitItems...)
 
 	renderItems := func(items []wharfItem, offset int) {
 		for i, item := range items {
@@ -1872,6 +1876,9 @@ func (m model) viewMarketContent() string {
 	b.WriteString("\n")
 	b.WriteString(subHeader("EQUIPMENT", m.width))
 	renderItems(equipItems, len(supplyItems)+len(repairItems))
+	b.WriteString("\n")
+	b.WriteString(subHeader("PERMITS", m.width))
+	renderItems(permitItems, len(supplyItems)+len(repairItems)+len(equipItems))
 
 	b.WriteString("\n")
 	b.WriteString(styleKey.Render("  [↑↓/JK] Navigate   [ENTER] Buy   [1-4] Switch tabs"))
