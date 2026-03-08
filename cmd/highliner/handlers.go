@@ -1070,7 +1070,7 @@ func (m *model) resolveEvent(key string) {
 			m.gs.HasFireExtinguisher = false
 			m.gs.Engine = math.Max(0, m.gs.Engine-65)
 			m.gs.DayLost = true
-			m.addLogStyled(styleLogAmber, "  You put it out. Barely.")
+			m.addLogStyled(styleWarn, "  You put it out. Barely.")
 			m.addLog(styleDim("  Extinguisher empty. Engine compartment is black. Coast Guard tow back to Rockland."))
 			m.addLog(styleDim(fmt.Sprintf("  Engine down to %.0f%%. She'll run but she needs work.", m.gs.Engine)))
 			m.addLog(styleDim("  Day's done."))
@@ -1137,20 +1137,14 @@ func (m *model) boatSinks() {
 		m.addLog("")
 
 		// Reset to Eastern 22 — keep money and loan, lose everything else
-		saved := m.gs.Money
-		savedLoan := m.gs.LoanBalance
-		savedHasLoan := m.gs.HasLoan
+		savedMoney := m.gs.Money
 		savedDay := m.gs.Day
-		savedSeason := m.gs.Season
 		*m.gs = *newGame()
-		m.gs.Money = saved
-		m.gs.LoanBalance = savedLoan
-		m.gs.HasLoan = savedHasLoan
+		m.gs.Money = savedMoney
 		m.gs.Day = savedDay
-		m.gs.Season = savedSeason
 		m.addLogStyled(styleLogGreen, "  You're back on the dock. Eastern 22 waiting at the float.")
 		m.addLogStyled(styleLogGreen, "  Start from scratch. You've done it before.")
-		m.phase = PhaseIdle
+		m.phase = PhaseMorning
 		saveGame(m.gs)
 	} else {
 		// No life raft — game over
