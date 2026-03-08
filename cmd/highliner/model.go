@@ -633,7 +633,7 @@ func (m *model) doEvening() {
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render("  End of day. What are you doing tonight?"))
 	m.addLog("")
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [1] Allen's Coffee Brandy   $12   %s", styleDim("3 nights running = can't fish tomorrow"))))
-	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [2] Six-Pack of Natty       $9    %s", styleDim("Mild. Won't wreck you."))))
+	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [2] Six-Pack of Natty       $9    %s", styleDim("A couple of natty's won't hurt ya none!"))))
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [3] Scratch Ticket          $5    %s", styleDim("Probably a loser. Probably."))))
 	m.addLog(lipgloss.NewStyle().Foreground(colorBrightWhite).Render(fmt.Sprintf("  [4] Early night             free  %s", styleDim("Up before dawn. Full day tomorrow."))))
 	m.addLog("")
