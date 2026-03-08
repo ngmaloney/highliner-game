@@ -946,6 +946,7 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Kid at the marina tried to tell Danny Thurston that John Deere and Cat are basically the same. Danny hasn't spoken to him since. It's been three weeks.",
 		"Tommy Leighton put a John Deere in his new build. His father, who runs a Cat, has not visited the boat. Family dinners are tense.",
 		"Bait shed's ripe this morning. People forget what real stink is. Grew up near the paper mill in Millinocket — that was stink. This is just Tuesday.",
+		"Pulled a tautog this morning. Thing had more teeth than the fried dough line at Fryeburg Fair. Threw him back. Didn't trust him.",
 	}
 
 	var lines []string
