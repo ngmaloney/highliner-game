@@ -323,6 +323,8 @@ type GameState struct {
 	// Licenses
 	HasCrabPermit       bool `json:"has_crab_permit"`       // keep/sell Jonah + rock crab
 	HasGroundfishPermit bool `json:"has_groundfish_permit"` // keep/sell monkfish + sea bass
+
+	PendingVandalism bool `json:"pending_vandalism"` // trap thief flagged — engine damage possible next morning
 }
 
 func newGame() *GameState {
@@ -754,6 +756,14 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 			KeyB:   "i", LabelB: "[I] Keep hauling (someone else will get it)",
 		})
 	}
+	// Neighbor's trap — always possible
+	events = append(events, RandomEvent{
+		Type:   EventNeighborTrap,
+		Time:   "0850",
+		Desc:   "0850 — Someone else's warp fouled in your line. Trap came up with it. Still loaded.",
+		KeyA:   "h", LabelA: "[H] Haul it, keep the catch",
+		KeyB:   "l", LabelB: "[L] Untangle and drop it back",
+	})
 	e := events[rand.Intn(len(events))]
 	return &e
 }

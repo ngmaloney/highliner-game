@@ -32,6 +32,7 @@ const (
 	EventBoatDistress
 	EventGhostTrap
 	EventStormComing
+	EventNeighborTrap
 )
 
 type RandomEvent struct {

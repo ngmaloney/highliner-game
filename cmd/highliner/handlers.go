@@ -267,6 +267,22 @@ func (m *model) startMorning() {
 	m.gs.DailyPrices = RollDailyPrices()
 	m.gs.DieselPrice = RollDieselPrice()
 	m.gs.BaitPrice = RollBaitPrice()
+
+	// Deferred vandalism — 30% already set the flag; now resolve it
+	if m.gs.PendingVandalism {
+		m.gs.PendingVandalism = false
+		dmg := 8.0 + rand.Float64()*12.0 // 8–20% engine damage
+		m.gs.Engine = math.Max(0, m.gs.Engine-dmg)
+		flavors := []string{
+			"Came down to the dock this morning. Someone got into your engine bay.",
+			"Hood on the engine was ajar. Wasn't like that last night.",
+			"Found a wrench on the deck that ain't yours. Check your engine.",
+		}
+		m.addLog("")
+		m.addLogStyled(styleLogDanger, fmt.Sprintf("  ⚠ %s", flavors[rand.Intn(len(flavors))]))
+		m.addLogStyled(styleLogDanger, fmt.Sprintf("  Engine took %.0f%% damage overnight. That wasn't weather.", dmg))
+	}
+
 	m.addLog("")
 	m.addLog(m.logDivider(styleLogInfo, "MORNING BRIEFING"))
 	m.addLog("")
@@ -772,6 +788,21 @@ func (m *model) resolveEvent(key string) {
 			if rand.Float64() < 0.20 {
 				m.addLog(styleDim("  Heard about it at the co-op. Nobody said anything but you felt it."))
 			}
+		}
+
+	case EventNeighborTrap:
+		if key == ev.KeyA {
+			// Steal the catch — bonus lbs, but mark pending vandalism (30% chance he finds out)
+			bonus := 5.0 + rand.Float64()*12.0
+			m.gs.Freezer += bonus
+			m.gs.TotalCatch += bonus
+			m.addLogStyled(styleLogGreen, fmt.Sprintf("  Hauled it. %.0f lbs of lobster. Tossed the trap back over the side.", bonus))
+			if rand.Float64() < 0.30 {
+				m.gs.PendingVandalism = true
+				m.addLog(styleDim("  Someone was watching from the ridge. Could be nothing."))
+			}
+		} else {
+			m.addLog("  You untangle the warp and drop it back. Not your gear, not your problem.")
 		}
 	}
 
