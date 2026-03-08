@@ -21,6 +21,7 @@ type BoatModel struct {
 	BaitCap      int     // lbs of herring the boat can carry (fish totes on deck)
 	MaxSteamHrs  float64 // max round-trip steam hours (range limit); 0 = unlimited
 	Cost         int
+	TrapCost     float64 // replacement cost per trap ($)
 	BaseHaul     float64 // lbs per trap per haul (realistic Maine avg ~1.5-2.5 lbs/trap/day)
 }
 
@@ -29,24 +30,23 @@ var BoatModels = map[string]BoatModel{
 	// Fishes nearshore to mid-range; outer zones are a stretch
 	"Eastern 22": {
 		Name: "Eastern 22", Length: 22, MaxTraps: 40,
-		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 250, MaxSteamHrs: 6.5, Cost: 0, BaseHaul: 2.0,
+		HullRisk: 2.5, FuelCap: 40, FuelBurnRate: 2.5, BaitCap: 250, MaxSteamHrs: 6.5, Cost: 0, TrapCost: 175, BaseHaul: 2.0,
 	},
-	// Calvin Beal 34: workhorse, twin diesel ~4.5 gal/hr, 120-gal tank
 	"Calvin Beal 34": {
 		Name: "Calvin Beal 34", Length: 34, MaxTraps: 300,
-		HullRisk: 1.2, FuelCap: 120, FuelBurnRate: 4.5, BaitCap: 500, Cost: 45000, BaseHaul: 2.2,
+		HullRisk: 1.2, FuelCap: 120, FuelBurnRate: 4.5, BaitCap: 500, Cost: 45000, TrapCost: 165, BaseHaul: 2.2,
 	},
 	"Duffy 35": {
 		Name: "Duffy 35", Length: 35, MaxTraps: 400,
-		HullRisk: 1.1, FuelCap: 130, FuelBurnRate: 4.8, BaitCap: 600, Cost: 50000, BaseHaul: 2.3,
+		HullRisk: 1.1, FuelCap: 130, FuelBurnRate: 4.8, BaitCap: 600, Cost: 85000, TrapCost: 155, BaseHaul: 2.3,
 	},
 	"Young Bros 40": {
 		Name: "Young Bros 40", Length: 40, MaxTraps: 600,
-		HullRisk: 0.8, FuelCap: 200, FuelBurnRate: 9.0, BaitCap: 900, Cost: 120000, BaseHaul: 2.5,
+		HullRisk: 0.8, FuelCap: 200, FuelBurnRate: 9.0, BaitCap: 900, Cost: 120000, TrapCost: 150, BaseHaul: 2.5,
 	},
 	"Wesmac 46": {
 		Name: "Wesmac 46", Length: 46, MaxTraps: 800,
-		HullRisk: 0.5, FuelCap: 300, FuelBurnRate: 14.0, BaitCap: 1400, Cost: 280000, BaseHaul: 2.7,
+		HullRisk: 0.5, FuelCap: 300, FuelBurnRate: 14.0, BaitCap: 1400, Cost: 280000, TrapCost: 150, BaseHaul: 2.7,
 	},
 }
 
@@ -128,6 +128,7 @@ const (
 	PhaseMorning Phase = iota
 	PhaseZoneSelect
 	PhaseHauling
+	PhaseDecision // mid-haul random event waiting for player input
 	PhaseSell
 	PhaseEvening // vices: booze, scratch tickets
 	PhaseGameOver
@@ -172,6 +173,14 @@ type GameState struct {
 	DailyPrices  [6]float64 `json:"daily_prices"`
 	DieselPrice  float64    `json:"diesel_price"`  // $/gal, marine diesel
 	BaitPrice    float64    `json:"bait_price"`    // $/lb, fresh herring spot price
+
+	// Equipment
+	HasRadar      bool `json:"has_radar"`       // fog: unlocks all zones
+	HasGPS        bool `json:"has_gps"`         // unlocks zones F/G
+	HasVHF        bool `json:"has_vhf"`         // weather forecast + distress events
+	HasUpgHauler  bool `json:"has_upg_hauler"`  // slower hydraulic wear
+	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
+	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 }
 
 func newGame() *GameState {
@@ -243,6 +252,7 @@ type HaulResult struct {
 	ZincsDmg      float64
 	HydraulicsDmg float64
 	HullDmg       float64
+	TrapsLost     int
 }
 
 // RollDailyPrices generates co-op dock prices for the day
@@ -365,8 +375,11 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 	}
 
 	// Component wear: diesel engines are durable; zincs corrode from seawater
-	// Engine: ~0.5-1% wear per day running hard
+	// Engine: ~0.5-1% wear per day; heat exchanger reduces wear by 60%
 	engineDmg := 0.5 + rand.Float64()*0.5
+	if gs.HasExhaustHX {
+		engineDmg *= 0.4
+	}
 	// Zincs: ~1-2% per day (saltwater exposure)
 	zincsDmg := 1.0 + rand.Float64()*1.0
 	// Hydraulics: ~0.4-0.9% per day
@@ -374,6 +387,24 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 
 	// Hull damage from weather
 	hullDmg := weather.HullDamage * boat.HullRisk * (rand.Float64() * 0.5 + 0.5)
+
+	// Trap loss — each trap has a base chance of being lost per haul
+	trapLossRate := 0.02 // 2% per trap in normal conditions
+	if weather.Type == WeatherSCA {
+		trapLossRate = 0.05
+	}
+	// Deeper zones = rockier bottom, stronger current = more line loss
+	trapLossRate += zone.SteamHours * 0.003
+	// Upgraded hauler = better line handling
+	if gs.HasUpgHauler {
+		trapLossRate *= 0.6
+	}
+	trapsLost := 0
+	for i := 0; i < gs.Traps; i++ {
+		if rand.Float64() < trapLossRate {
+			trapsLost++
+		}
+	}
 
 	return HaulResult{
 		CatchLbs:      catchLbs,
@@ -385,6 +416,7 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		ZincsDmg:      zincsDmg,
 		HydraulicsDmg: hydDmg,
 		HullDmg:       hullDmg,
+		TrapsLost:     trapsLost,
 	}
 }
 
@@ -471,6 +503,62 @@ var flavorPool = []flavorEntry{
 			"Didn't lose a single buoy today. That's worth noting.",
 		},
 	},
+}
+
+// RollRandomEvent returns a random mid-haul event, or nil (85% chance of none)
+func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
+	if rand.Float64() > 0.15 {
+		return nil
+	}
+	events := []RandomEvent{
+		{
+			Type:   EventBerriedHen,
+			Time:   "1045",
+			Desc:   "1045 — Big mama came up. V-notch, eggs all over the swimmerets. She's a broodstock female.",
+			KeyA:   "k", LabelA: "[K] Keep her (+$18, risk fine)",
+			KeyB:   "t", LabelB: "[T] Throw her back (legal)",
+		},
+		{
+			Type:   EventSquareGrouper,
+			Time:   "0910",
+			Desc:   "0910 — Something big tangled in the buoy line. Wrapped in plastic, waterlogged. You know what this is.",
+			KeyA:   "k", LabelA: "[K] Haul it aboard (+$2,500)",
+			KeyB:   "r", LabelB: "[R] Radio the Coast Guard",
+		},
+		{
+			Type:   EventJonahCrabs,
+			Time:   "1115",
+			Desc:   "1115 — Traps are packed with Jonah crabs today. Legal to keep. You could bring these in.",
+			KeyA:   "k", LabelA: "[K] Keep them (extra cash)",
+			KeyB:   "t", LabelB: "[T] Toss back (not worth the hassle)",
+		},
+		{
+			Type:   EventGhostTrap,
+			Time:   "1200",
+			Desc:   "1200 — Found a derelict trap on the bottom. No buoy, no tag. Full of lobsters.",
+			KeyA:   "h", LabelA: "[H] Haul it up (gray area, extra lbs)",
+			KeyB:   "l", LabelB: "[L] Leave it",
+		},
+		{
+			Type:   EventStormComing,
+			Time:   "1145",
+			Desc:   "1145 — NOAA just issued a Gale Warning. Storm moving faster than forecast. You're an hour from the last set.",
+			KeyA:   "p", LabelA: "[P] Push through and finish",
+			KeyB:   "h", LabelB: "[H] Head in now (keep what you have)",
+		},
+	}
+	// Boat in distress only if player has VHF
+	if gs.HasVHF {
+		events = append(events, RandomEvent{
+			Type:   EventBoatDistress,
+			Time:   "0955",
+			Desc:   "0955 — Mayday on channel 16. Lobsterboat taking on water, 2 miles east.",
+			KeyA:   "h", LabelA: "[H] Go help (lose 2 hrs fishing)",
+			KeyB:   "i", LabelB: "[I] Keep hauling (someone else will get it)",
+		})
+	}
+	e := events[rand.Intn(len(events))]
+	return &e
 }
 
 // DeckLog returns a contextual flavor text entry for the end-of-day summary
