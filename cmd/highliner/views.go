@@ -836,9 +836,11 @@ func trapIncrement(maxTraps int) (int, float64) {
 	switch {
 	case maxTraps <= 40: // Eastern 22
 		return 5, 175.0
+	case maxTraps <= 100: // Crowley Beal 28
+		return 5, 170.0
 	case maxTraps <= 400: // Calvin Beal, Duffy
-		return 25, 165.0
+		return 5, 165.0
 	default: // Young Bros, Wesmac
-		return 50, 150.0
+		return 5, 150.0
 	}
 }
