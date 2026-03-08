@@ -330,6 +330,7 @@ type GameState struct {
 	HasUpgHauler  bool `json:"has_upg_hauler"`  // +30% yield, slower hydraulic wear
 	HasLiveWell   bool `json:"has_live_well"`    // +10% sale price — lobsters arrive alive and lively
 	HasBaitFreezer bool `json:"has_bait_freezer"` // 500 lb bait capacity
+	HasGrapple     bool `json:"has_grapple"`      // recover lost gear from bottom
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
 	HasExhaustHX  bool `json:"has_exhaust_hx"`  // heat exchanger: reduces engine wear
 	HasDeckLights bool `json:"has_deck_lights"` // early departure, +10% catch
@@ -975,6 +976,30 @@ func RollRandomEvent(gs *GameState, weather Weather) *RandomEvent {
 		Desc:   "0845 — Billy Thurston on channel 68. Hauler seized up mid-string. Asking if anyone can help finish his last set. Offering a quarter share.",
 		KeyA:   "h", LabelA: "[H] Go help (lose ~25% of your haul, get a cut)",
 		KeyB:   "k", LabelB: "[K] Keep hauling your own gear",
+	})
+
+	events = append(events, RandomEvent{
+		Type: EventFoundOldGear,
+		Time: "1015",
+		Desc: func() string {
+			if gs.HasGrapple {
+				return "1015 — Buoy-less line snagged on your warp. Looks like it's been down there a while. Could be a full string of traps."
+			}
+			return "1015 — Buoy-less line off the starboard bow. Somebody lost their gear. No grapple, no way to drag for it."
+		}(),
+		KeyA: func() string {
+			if gs.HasGrapple {
+				return "g"
+			}
+			return ""
+		}(),
+		LabelA: func() string {
+			if gs.HasGrapple {
+				return "[G] Drag for it"
+			}
+			return ""
+		}(),
+		KeyB: "l", LabelB: "[L] Leave it",
 	})
 
 	e := events[rand.Intn(len(events))]

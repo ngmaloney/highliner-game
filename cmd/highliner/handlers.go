@@ -21,7 +21,7 @@ func (m model) handlePhaseKey(key string) (model, tea.Cmd) {
 			}
 			return m, nil
 		case "down", "j":
-			if m.marketCursor < 24 {
+			if m.marketCursor < 25 {
 				m.marketCursor++
 				m.syncAltViewport()
 			}
@@ -1063,6 +1063,23 @@ func (m *model) resolveEvent(key string) {
 		m.gs.TotalCatch += bonus
 		m.addLogStyled(styleLogGreen, fmt.Sprintf("  Counted %.0f lbs out of one trap. Bait was perfect. Wish every trap fished like that.", bonus))
 
+	case EventFoundOldGear:
+		if key == ev.KeyA && m.gs.HasGrapple {
+			// Drag for it — recover some traps
+			recovered := 2 + rand.Intn(6) // 2–7 traps
+			maxAdd := BoatModels[m.gs.BoatName].MaxTraps - m.gs.Traps
+			recovered = min(recovered, maxAdd)
+			if recovered > 0 {
+				m.gs.Traps += recovered
+				m.addLogStyled(styleLogGreen, fmt.Sprintf("  Grapple took two passes but you pulled up %d traps. Old Pemaquid Bay gear by the look of the buoy wood.", recovered))
+				m.addLog(styleDim("  You rebait and reset them. Free traps are free traps."))
+			} else {
+				m.addLog(styleDim("  Grappled it up but you're already at trap limit. Cut it loose."))
+			}
+		} else {
+			m.addLog(styleDim("  You leave it. Whoever lost that gear isn't getting it back either way."))
+		}
+
 	case EventHelpNeighbor:
 		if key == ev.KeyA {
 			// Go help — lose 25% of haul, gain cash cut
@@ -1422,6 +1439,19 @@ func (m *model) doBuy() {
 			m.gs.Money -= 1200
 			m.gs.HasBaitFreezer = true
 			m.confirmBuy = "Bait freezer installed. Buy 200 lbs at a time and stop hitting the wharf every morning."
+		}},
+		{"Grapple Hook", 500, func() {
+			if m.gs.HasGrapple {
+				m.confirmBuy = "Already have one."
+				return
+			}
+			if m.gs.Money < 500 {
+				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(500), moneyStr(500-m.gs.Money))
+				return
+			}
+			m.gs.Money -= 500
+			m.gs.HasGrapple = true
+			m.confirmBuy = "Grapple rigged up. Now you can drag for lost gear when you find it."
 		}},
 		{"Deck Lights", 1500, func() {
 			if m.gs.HasDeckLights {

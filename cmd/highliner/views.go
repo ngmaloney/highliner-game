@@ -430,6 +430,17 @@ func (m model) viewMarketContent() string {
 			}
 			return fmt.Sprintf("500 lb capacity (now: %d lb) — stop buying bait every day", boat.BaitCap)
 		}()},
+		{"Grapple Hook", func() string {
+			if m.gs.HasGrapple {
+				return "owned"
+			}
+			return "$500"
+		}(), func() string {
+			if m.gs.HasGrapple {
+				return "✓ drag for lost gear — yours if you can haul it up"
+			}
+			return "drag bottom for lost traps — without it you sail past"
+		}()},
 		{"Deck Lights", func() string {
 			if m.gs.HasDeckLights {
 				return "owned"
@@ -780,7 +791,7 @@ func (m *model) syncAltViewport() {
 		// Compute which line the cursor is on.
 		// Section item counts: CREW=2, SUPPLIES=4, REPAIRS=3, EQUIPMENT=9, PERMITS=2, VESSELS=5
 		// Layout: subHeader(1) + items + gap(1) per section
-		wharfSectionCounts := []int{2, 4, 3, 9, 2, 5}
+		wharfSectionCounts := []int{2, 4, 3, 10, 2, 5}
 		cursor := m.marketCursor
 		line := 0
 		for _, count := range wharfSectionCounts {

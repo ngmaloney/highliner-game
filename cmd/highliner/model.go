@@ -50,6 +50,7 @@ const (
 	// Positive events
 	EventDoubleLoaded
 	EventHelpNeighbor
+	EventFoundOldGear
 )
 
 type RandomEvent struct {
