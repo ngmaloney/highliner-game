@@ -634,21 +634,29 @@ func simulateHaul(gs *GameState, zone Zone, weather Weather) HaulResult {
 		rockLbs = rolledRockLbs
 	}
 
-	// Always roll groundfish encounter in zones B+
+	// Groundfish encounter — rates scale with zone depth/distance
+	// Cusk/Hake: nearshore to mid; Monkfish: mid to deep; Halibut: offshore only
 	var rolledGFName string
 	var rolledGFLbs float64
-	if zone.SteamHours >= 2.0 {
-		if rand.Float64() < 0.25 {
+	sh := zone.SteamHours
+	if sh >= 2.0 {
+		// Cusk/Hake: present nearshore, peak mid-range, tails off deep
+		cuskChance := math.Min(0.35, 0.06*sh)
+		// Monkfish: rare nearshore, peaks offshore
+		monkChance := math.Min(0.40, 0.04*sh)
+		// Halibut: offshore only — needs 6+ hrs steam to have any real shot
+		haliChance := math.Max(0, (sh-5.0)*0.025) // 0% at Zone E (6h)=2.5%, Zone G (10h)=12.5%
+
+		switch {
+		case rand.Float64() < haliChance:
+			rolledGFName = "Halibut"
+			rolledGFLbs = 8.0 + rand.Float64()*22.0 // 8–30 lbs flat
+		case rand.Float64() < monkChance:
+			rolledGFName = "Monkfish"
+			rolledGFLbs = traps * (0.01 + rand.Float64()*0.04) * (sh / 4.0)
+		case rand.Float64() < cuskChance:
 			rolledGFName = "Cusk/Hake"
 			rolledGFLbs = traps * (0.02 + rand.Float64()*0.04)
-		}
-		if rand.Float64() < 0.20 {
-			rolledGFName = "Monkfish"
-			rolledGFLbs = traps * (0.01 + rand.Float64()*0.04)
-		}
-		if rand.Float64() < 0.02 {
-			rolledGFName = "Halibut"
-			rolledGFLbs = 8.0 + rand.Float64()*22.0
 		}
 	}
 	if gs.HasGroundfishPermit {

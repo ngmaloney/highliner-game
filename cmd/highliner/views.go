@@ -556,7 +556,7 @@ func (m model) viewChartContent() string {
 	b.WriteString("\n")
 
 	// column widths (plain chars): Z=1 Name=22 Steam=5 Fuel=7 Lobster=7 Crab=6 Fish=6 Notes
-	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-10s  %-6s  %s",
+	hdr := fmt.Sprintf("  %-1s  %-22s  %-5s  %-7s  %-7s  %-10s  %-18s  %s",
 		"Z", "Name", "Steam", "Fuel", "Lobster", "Crab", "Fish", "Notes")
 	b.WriteString(styleLogInfo.Render(hdr) + "\n")
 	b.WriteString("  " + styleDim(strings.Repeat("─", len(hdr)-2)) + "\n")
@@ -575,18 +575,24 @@ func (m model) viewChartContent() string {
 		rockChance  := math.Min(0.65, 0.18*crabFactor)
 		crabPct     := int((jonahChance + rockChance*0.5) * 100) // weighted by frequency
 
-		fishPct := 0
+		// Fish chance: same formula as simulateHaul (cusk + monk + halibut, mutually exclusive)
+		fishStr := "-"
 		if z.SteamHours >= 2.0 {
-			fishPct = 47 // ~25% cusk + 20% monkfish + 2% halibut
+			sh := z.SteamHours
+			cuskChance  := math.Min(0.35, 0.06*sh)
+			monkChance  := math.Min(0.40, 0.04*sh)
+			haliChance  := math.Max(0, (sh-5.0)*0.025)
+			totalFish   := int((cuskChance + monkChance + haliChance) * 100)
+			if haliChance > 0 {
+				fishStr = fmt.Sprintf("~%d%% (hal.~%.0f%%)", totalFish, haliChance*100)
+			} else {
+				fishStr = fmt.Sprintf("~%d%%", totalFish)
+			}
 		}
 
 		crabStr := fmt.Sprintf("~%d%%", crabPct)
 		if m.gs.HotCrabZone == z.ID {
 			crabStr = fmt.Sprintf("~%d%% HOT", crabPct)
-		}
-		fishStr := "-"
-		if fishPct > 0 {
-			fishStr = fmt.Sprintf("~%d%%", fishPct)
 		}
 
 		// Access notes (plain)
@@ -600,7 +606,7 @@ func (m model) viewChartContent() string {
 		}
 
 		// Build the plain row, then color the whole thing
-		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-10s  %-6s  %s",
+		plain := fmt.Sprintf("  %-1s  %-22s  %3.1fh   %4.1fgl  %4d%%    %-10s  %-18s  %s",
 			z.ID, z.Name, z.SteamHours, fuelBurn, lobsterPct, crabStr, fishStr, notes)
 
 		var rowColor lipgloss.Color
