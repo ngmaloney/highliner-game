@@ -768,7 +768,7 @@ func (m *model) resolveEvent(key string) {
 			if rand.Float64() < 0.15 {
 				fine := 5000.0
 				m.gs.Money -= fine
-				m.addLogStyled(styleLogDanger, "  DEA boarded you at the dock. $5,000 fine. One day lost.")
+				m.addLogStyled(styleLogDanger, "  Coast Guard was waiting at the dock. $5,000 fine. One day lost.")
 				m.gs.Hungover = true
 			}
 		} else {
