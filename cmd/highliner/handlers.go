@@ -1042,7 +1042,9 @@ func (m *model) doSell() {
 		if bankPayment > 0 {
 			m.addLogStyled(styleLogExpense, fmt.Sprintf("  Bank payment: -%s", moneyStr(bankPayment)))
 		}
-		m.addLogStyled(styleLogRevenue, fmt.Sprintf("  Net: %s", moneyStr(net)))
+		if crewCut > 0 || bankPayment > 0 {
+			m.addLogStyled(styleLogRevenue, fmt.Sprintf("  Net: %s", moneyStr(net)))
+		}
 
 		// Add bycatch revenue
 		if m.haul != nil {
