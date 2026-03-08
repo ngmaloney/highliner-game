@@ -183,7 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "1", "/":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenLog
 				m.confirmBuy = ""
 				m.syncViewport()
@@ -191,7 +191,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handlePhaseKey(msg.String())
 			}
 		case "2", "m":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenMaintenance
 				m.confirmBuy = ""
 				m.syncAltViewport()
@@ -199,7 +199,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handlePhaseKey(msg.String())
 			}
 		case "3", "d":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenDock
 				m.confirmBuy = ""
 				m.syncAltViewport()
@@ -207,7 +207,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handlePhaseKey(msg.String())
 			}
 		case "4", "w":
-			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision {
+			if m.phase != PhaseZoneSelect && m.phase != PhaseEvening && m.phase != PhaseDecision && m.phase != PhaseHauling {
 				m.screen = ScreenMarket
 				m.confirmBuy = ""
 				m.marketCursor = 0
