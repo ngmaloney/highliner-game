@@ -939,6 +939,12 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Warden come by checking licenses last Tuesday. Looked at Earl Coombs's setup and said 'nice rig.' Earl said 'finest kind.' Warden didn't know what that meant but he left anyway.",
 		"Haul's been some good this week if the weather holds. Hard tellin' after that.",
 		"Heard the co-op's getting a new scale. About time. Current one's been reading light all summer. Hard tellin' how much that's cost us.",
+		"Gary Weed finally pulled that old Volvo and dropped in a John Deere. Boys at the co-op haven't let him live it down. 'You're a farmer now, Gary.'",
+		"Ronnie Ames swears by his Cat. Says it'll outlast the boat, outlast him, outlast his kids. Probably right. Thing sounds like it's angry at the world.",
+		"Heard Pete Conary's John Deere threw a belt mid-string out past the outer ledges. Pete says it's a fluke. Pete's Cat guys aren't surprised.",
+		"Mike Robbins has been running a Cat since '98. Says he'll never switch. Also says he's never had a good day in Zone A. Man's loyal to his engines and his bad luck.",
+		"Kid at the marina tried to tell Danny Thurston that John Deere and Cat are basically the same. Danny hasn't spoken to him since. It's been three weeks.",
+		"Tommy Leighton put a John Deere in his new build. His father, who runs a Cat, has not visited the boat. Family dinners are tense.",
 	}
 
 	var lines []string
