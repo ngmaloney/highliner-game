@@ -349,7 +349,7 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasRadar {
 				return "owned"
 			}
-			return "$2,500"
+			return "$3,500"
 		}(), func() string {
 			if m.gs.HasRadar {
 				return "✓ fish all zones in fog"
@@ -393,7 +393,7 @@ func (m model) viewMarketContent() string {
 			if m.gs.HasDepthSound {
 				return "owned"
 			}
-			return "$2,500"
+			return "$3,500"
 		}(), func() string {
 			if m.gs.HasDepthSound {
 				return "✓ full efficiency in deep zones"
@@ -419,7 +419,7 @@ func (m model) viewMarketContent() string {
 			if boat.BaitCap >= 500 {
 				return "built-in"
 			}
-			return "$2,500"
+			return "$3,500"
 		}(), func() string {
 			if m.gs.HasBaitFreezer {
 				return "✓ 500 lb bait capacity — buy in bulk, save trips to the wharf"
