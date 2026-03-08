@@ -265,6 +265,12 @@ func (m *model) doNextDay() {
 		m.chargeDockFee()
 		m.addLog("")
 		m.addLogStyled(styleKey, "  [ENTER/S] Skip to co-op   [W] Wharf   [M] Maintenance")
+	} else if m.gs.TowedIn {
+		m.gs.TowedIn = false
+		m.phase = PhaseMorning
+		m.addLog("")
+		m.addLogStyled(styleLogDanger, "  Back on the dock. Engine's in rough shape.")
+		m.addLogStyled(styleLogDanger, "  Get her repaired before you go back out.")
 	} else if m.gs.DayLost {
 		m.gs.DayLost = false
 		m.phase = PhaseMorning
@@ -1069,7 +1075,7 @@ func (m *model) resolveEvent(key string) {
 			// Fought the fire — extinguisher gone, engine torched, towed home
 			m.gs.HasFireExtinguisher = false
 			m.gs.Engine = math.Max(0, m.gs.Engine-65)
-			m.gs.DayLost = true
+			m.gs.TowedIn = true
 			towCost := 500.0
 			m.gs.Money -= towCost
 			m.addLogStyled(styleWarn, "  You put it out. Barely.")

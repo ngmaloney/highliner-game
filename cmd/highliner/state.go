@@ -331,6 +331,7 @@ type GameState struct {
 	HasLiveWell   bool `json:"has_live_well"`    // +10% sale price — lobsters arrive alive and lively
 	HasBaitFreezer bool `json:"has_bait_freezer"` // 500 lb bait capacity
 	HasGrapple          bool `json:"has_grapple"`           // recover lost gear from bottom
+	TowedIn             bool `json:"towed_in"`              // towed home — engine fire, mechanical
 	HasFireExtinguisher bool `json:"has_fire_extinguisher"` // one-time use — fight engine fire
 	HasLifeRaft         bool `json:"has_life_raft"`         // one-time use — survive sinking
 	HasDepthSound bool `json:"has_depth_sound"` // full catch rate in deep zones (D-G)
