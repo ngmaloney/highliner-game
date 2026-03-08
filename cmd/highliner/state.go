@@ -949,14 +949,10 @@ func RollMorningGossip(gs *GameState, weather Weather) []string {
 		"Pulled a tautog this morning. Thing had more teeth than the fried dough line at Fryeburg Fair. Threw him back. Didn't trust him.",
 	}
 
-	var lines []string
-	// Maybe add a contextual line
+	// Prefer contextual 60% of the time when available, otherwise static
 	if len(contextual) > 0 && rand.Float64() < 0.60 {
-		lines = append(lines, contextual[rand.Intn(len(contextual))])
+		return []string{contextual[rand.Intn(len(contextual))]}
 	}
-	// Always add one static line
-	lines = append(lines, static[rand.Intn(len(static))])
-
-	return lines
+	return []string{static[rand.Intn(len(static))]}
 }
 
