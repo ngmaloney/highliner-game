@@ -1206,13 +1206,13 @@ func (m *model) doBuy() {
 			m.confirmBuy = "Experienced hand hired. He knows what he's doing."
 		}},
 		// SUPPLIES
-		{"Bait (50 lbs)", 0, func() {
-			cap := m.gs.EffectiveBaitCap()
-			if m.gs.Bait >= cap {
-				m.confirmBuy = "Bait storage full!"
+		{"Bait — one trip", 0, func() {
+			tripLbs := int(float64(m.gs.Traps)*2.5+0.5)
+			add := max(0, min(tripLbs-m.gs.Bait, m.gs.EffectiveBaitCap()-m.gs.Bait))
+			if add <= 0 {
+				m.confirmBuy = "Already have enough bait for today."
 				return
 			}
-			add := min(50, cap-m.gs.Bait)
 			cost := float64(add) * m.gs.BaitPrice
 			if m.gs.Money < cost {
 				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(cost), moneyStr(cost-m.gs.Money))
@@ -1220,15 +1220,15 @@ func (m *model) doBuy() {
 			}
 			m.gs.Money -= cost
 			m.gs.Bait += add
-			m.confirmBuy = fmt.Sprintf("Loaded %d lbs herring for %s", add, moneyStr(cost))
+			m.confirmBuy = fmt.Sprintf("Loaded %d lbs for today — %s", add, moneyStr(cost))
 		}},
-		{"Bait (200 lbs)", 0, func() {
+		{"Bait — fill up", 0, func() {
 			cap := m.gs.EffectiveBaitCap()
-			if m.gs.Bait >= cap {
-				m.confirmBuy = "Bait storage full!"
+			add := max(0, cap-m.gs.Bait)
+			if add <= 0 {
+				m.confirmBuy = "Bait storage full."
 				return
 			}
-			add := min(200, cap-m.gs.Bait)
 			cost := float64(add) * m.gs.BaitPrice * 0.85
 			if m.gs.Money < cost {
 				m.confirmBuy = fmt.Sprintf("Need %s — short by %s", moneyStr(cost), moneyStr(cost-m.gs.Money))

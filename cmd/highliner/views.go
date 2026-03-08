@@ -265,8 +265,36 @@ func (m model) viewMarketContent() string {
 
 	// Supplies section
 	supplyItems := []wharfItem{
-		{"Bait (50 lbs)", fmt.Sprintf("$%.0f", 50*m.gs.BaitPrice), fmt.Sprintf("Herring @ $%.2f/lb — roughly one day on 20 traps", m.gs.BaitPrice)},
-		{"Bait (200 lbs)", fmt.Sprintf("$%.0f", 200*m.gs.BaitPrice*0.85), fmt.Sprintf("Bulk herring @ $%.2f/lb — 15%% discount, 3-4 days supply", m.gs.BaitPrice*0.85)},
+		{"Bait — one trip", func() string {
+			tripLbs := int(float64(m.gs.Traps)*2.5+0.5)
+			need := max(0, tripLbs-m.gs.Bait)
+			if need <= 0 {
+				return "stocked"
+			}
+			return fmt.Sprintf("$%.0f", float64(need)*m.gs.BaitPrice)
+		}(), func() string {
+			tripLbs := int(float64(m.gs.Traps)*2.5+0.5)
+			need := max(0, tripLbs-m.gs.Bait)
+			if need <= 0 {
+				return fmt.Sprintf("already have enough for today (%d traps)", m.gs.Traps)
+			}
+			return fmt.Sprintf("%d lbs @ $%.2f/lb — enough for today's %d traps", need, m.gs.BaitPrice, m.gs.Traps)
+		}()},
+		{"Bait — fill up", func() string {
+			cap := m.gs.EffectiveBaitCap()
+			need := max(0, cap-m.gs.Bait)
+			if need <= 0 {
+				return "full"
+			}
+			return fmt.Sprintf("$%.0f", float64(need)*m.gs.BaitPrice*0.85)
+		}(), func() string {
+			cap := m.gs.EffectiveBaitCap()
+			need := max(0, cap-m.gs.Bait)
+			if need <= 0 {
+				return "bait storage full"
+			}
+			return fmt.Sprintf("%d lbs @ $%.2f/lb — 15%% bulk rate, fills to %d lb cap", need, m.gs.BaitPrice*0.85, cap)
+		}()},
 		{"Fuel", func() string {
 			needed := BoatModels[m.gs.BoatName].FuelCap - m.gs.Fuel
 			if needed <= 0 {
